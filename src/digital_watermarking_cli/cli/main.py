@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 import typer
 from pathlib import Path
 from typing import Optional, List, Tuple, Union
 import importlib.resources as resources
 
-from digital_watermarking_cli.core.visible import add_text_watermark, add_image_watermark
+from digital_watermarking_cli.core.visible_watermark import add_text_watermark, add_image_watermark
 from digital_watermarking_cli.utils.image_helpers import is_supported_image, validate_image
 from digital_watermarking_cli.config.settings import (
     load_config, save_config, list_profiles, create_profile, delete_profile, switch_profile,
