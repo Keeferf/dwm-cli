@@ -4,10 +4,10 @@ from typing import Tuple, Optional, Union
 
 # Import from utils (sibling of core)
 try:
-    from ..utils.image_helpers import ensure_rgb, is_supported_image
+    from ..utils.image_helpers import ensure_valid_image, is_supported_image
 except ImportError:
     # Fallback when running as script (if needed)
-    from utils.image_helpers import ensure_rgb, is_supported_image
+    from utils.image_helpers import ensure_valid_image, is_supported_image
 
 
 def _resolve_position(position, image_size, draw, text, font):
@@ -64,8 +64,8 @@ def add_text_watermark(
     Add a visible text watermark to an image.
     Position can be a tuple (x, y) or a string like "bottom-right", "center", etc.
     """
-    if not is_supported_image(input_path):
-        raise ValueError(f"Unsupported image format: {input_path.suffix}")
+    # Validate input image (exists, supported extension, not corrupted)
+    ensure_valid_image(input_path)
 
     base = Image.open(input_path).convert("RGBA")
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
@@ -102,8 +102,9 @@ def add_image_watermark(
     (For image watermarks, only tuple positions are currently supported;
      if a string is given, it is converted to a simple preset based on image size.)
     """
-    if not is_supported_image(input_path):
-        raise ValueError(f"Unsupported image format: {input_path.suffix}")
+    # Validate both input image and watermark image
+    ensure_valid_image(input_path)
+    ensure_valid_image(watermark_path)
 
     base = Image.open(input_path).convert("RGBA")
     watermark = Image.open(watermark_path).convert("RGBA")

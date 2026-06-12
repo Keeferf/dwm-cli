@@ -5,7 +5,7 @@ from typing import Optional, List, Tuple, Union
 import importlib.resources as resources
 
 from digital_watermarking_cli.core.visible import add_text_watermark, add_image_watermark
-from digital_watermarking_cli.utils.image_helpers import is_supported_image
+from digital_watermarking_cli.utils.image_helpers import is_supported_image, validate_image
 from digital_watermarking_cli.config.settings import (
     load_config, save_config, list_profiles, create_profile, delete_profile, switch_profile,
     get_current_profile_name, DEFAULT_PROFILE_NAME
@@ -164,7 +164,7 @@ def get_text_color() -> Tuple[int, int, int]:
                 b = int(hex_code[4:6], 16)
                 return (r, g, b)
             else:
-                typer.echo("❌ Invalid hex code. Use format like FF5733 or #FF5733.")
+                typer.echo("Invalid hex code. Use format like FF5733 or #FF5733.")
     else:
         typer.echo("Invalid choice, using default white.")
         return (255, 255, 255)
@@ -172,6 +172,18 @@ def get_text_color() -> Tuple[int, int, int]:
 
 def prompt_text_watermark_batch(input_paths: List[Path]):
     """Apply text watermark to a list of images, saving to configured output_dir."""
+    # Pre-validate images, skip invalid/corrupt ones
+    valid_paths = []
+    for p in input_paths:
+        if validate_image(p):
+            valid_paths.append(p)
+        else:
+            typer.echo(f"Skipping invalid/corrupt image: {p.name}")
+
+    if not valid_paths:
+        typer.echo("No valid images to process.")
+        return
+
     config = get_current_config()
     output_dir = get_output_dir()
     text = typer.prompt("Watermark text")
@@ -187,7 +199,7 @@ def prompt_text_watermark_batch(input_paths: List[Path]):
             font_path = default_font
         else:
             font_path = None
-            typer.echo("⚠️  Bundled Roboto font not found, falling back to PIL default.", err=True)
+            typer.echo("Bundled Roboto font not found, falling back to PIL default.", err=True)
     else:
         font_path = font_path_input
 
@@ -195,7 +207,7 @@ def prompt_text_watermark_batch(input_paths: List[Path]):
     opacity = typer.prompt("Opacity (0-1)", default=config.get("opacity", 0.5))
     text_color = get_text_color()
 
-    for idx, input_path in enumerate(input_paths, 1):
+    for idx, input_path in enumerate(valid_paths, 1):
         output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
         try:
             add_text_watermark(
@@ -208,22 +220,40 @@ def prompt_text_watermark_batch(input_paths: List[Path]):
                 opacity=float(opacity),
                 text_color=text_color,
             )
-            typer.echo(f"✅ [{idx}/{len(input_paths)}] {output_path}")
+            typer.echo(f"[{idx}/{len(valid_paths)}] Watermarked: {output_path}")
         except Exception as e:
-            typer.echo(f"❌ [{idx}/{len(input_paths)}] Error on {input_path.name}: {e}", err=True)
+            typer.echo(f"[{idx}/{len(valid_paths)}] Error on {input_path.name}: {e}", err=True)
 
 
 def prompt_image_watermark_batch(input_paths: List[Path]):
     """Apply image watermark to a list of images, saving to configured output_dir."""
+    # Pre-validate source images, skip invalid/corrupt ones
+    valid_paths = []
+    for p in input_paths:
+        if validate_image(p):
+            valid_paths.append(p)
+        else:
+            typer.echo(f"Skipping invalid/corrupt image: {p.name}")
+
+    if not valid_paths:
+        typer.echo("No valid images to process.")
+        return
+
     config = get_current_config()
     output_dir = get_output_dir()
     watermark_path = get_input_paths_interactive("Watermark image (logo)", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif")])[0]
+
+    # Validate the watermark image itself
+    if not validate_image(watermark_path):
+        typer.echo(f"Watermark image is invalid or corrupted: {watermark_path}")
+        return
+
     pos_default = config.get("position", "bottom-right")
     position = typer.prompt("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
     scale = typer.prompt("Scale factor (1.0 = original)", default=config.get("scale", 1.0))
     opacity = typer.prompt("Opacity (0-1)", default=config.get("opacity", 0.5))
 
-    for idx, input_path in enumerate(input_paths, 1):
+    for idx, input_path in enumerate(valid_paths, 1):
         output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
         try:
             add_image_watermark(
@@ -234,13 +264,13 @@ def prompt_image_watermark_batch(input_paths: List[Path]):
                 scale=float(scale),
                 opacity=float(opacity),
             )
-            typer.echo(f"✅ [{idx}/{len(input_paths)}] {output_path}")
+            typer.echo(f"[{idx}/{len(valid_paths)}] Watermarked: {output_path}")
         except Exception as e:
-            typer.echo(f"❌ [{idx}/{len(input_paths)}] Error on {input_path.name}: {e}", err=True)
+            typer.echo(f"[{idx}/{len(valid_paths)}] Error on {input_path.name}: {e}", err=True)
 
 
 def prompt_text_watermark():
-    """Single‑image text watermark"""
+    """Single-image text watermark"""
     typer.echo("\n--- Text Watermark (Single Image) ---")
     input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
     output_dir = get_output_dir()
@@ -259,7 +289,7 @@ def prompt_text_watermark():
             font_path = default_font
         else:
             font_path = None
-            typer.echo("⚠️  Bundled Roboto font not found, falling back to PIL default.", err=True)
+            typer.echo("Bundled Roboto font not found, falling back to PIL default.", err=True)
     else:
         font_path = font_path_input
 
@@ -278,13 +308,13 @@ def prompt_text_watermark():
             opacity=float(opacity),
             text_color=text_color,
         )
-        typer.echo(f"✅ Text watermark added: {output_path}")
+        typer.echo(f"Text watermark added: {output_path}")
     except Exception as e:
-        typer.echo(f"❌ Error: {e}", err=True)
+        typer.echo(f"Error: {e}", err=True)
 
 
 def prompt_image_watermark():
-    """Single‑image image watermark"""
+    """Single-image image watermark"""
     typer.echo("\n--- Image Watermark (Single Image) ---")
     input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
     output_dir = get_output_dir()
@@ -305,9 +335,9 @@ def prompt_image_watermark():
             scale=float(scale),
             opacity=float(opacity),
         )
-        typer.echo(f"✅ Image watermark added: {output_path}")
+        typer.echo(f"Image watermark added: {output_path}")
     except Exception as e:
-        typer.echo(f"❌ Error: {e}", err=True)
+        typer.echo(f"Error: {e}", err=True)
 
 
 def manage_configurations():
