@@ -1,0 +1,448 @@
+#!/usr/bin/env python3
+import typer
+from pathlib import Path
+from typing import Optional, List, Tuple, Union
+import importlib.resources as resources
+
+from digital_watermarking_cli.core.visible import add_text_watermark, add_image_watermark
+from digital_watermarking_cli.utils.image_helpers import is_supported_image
+from digital_watermarking_cli.config.settings import (
+    load_config, save_config, list_profiles, create_profile, delete_profile, switch_profile,
+    get_current_profile_name, DEFAULT_PROFILE_NAME
+)
+
+app = typer.Typer(help="Watermarking CLI Tool", no_args_is_help=False)
+
+
+def get_current_config():
+    """Load the current active profile config."""
+    return load_config()
+
+
+def get_default_font_path() -> str:
+    """Return absolute path to the bundled Roboto-Regular.ttf, or empty string if missing."""
+    try:
+        with resources.path("digital_watermarking_cli.core", "Roboto-Regular.ttf") as font_path:
+            if font_path.exists():
+                return str(font_path)
+            return ""
+    except (ImportError, FileNotFoundError, TypeError):
+        return ""
+
+
+def get_output_dir():
+    """
+    Return output directory from current config.
+    If config has no output_dir or it's empty, default to Downloads folder.
+    """
+    config = get_current_config()
+    out = config.get("output_dir", "")
+    if out:
+        path = Path(out).expanduser().resolve()
+    else:
+        # Fallback to Downloads if config has empty string or missing key
+        path = Path.home() / "Downloads"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def clear_screen():
+    """Clear terminal for cleaner menus"""
+    print("\033[2J\033[H", end="")
+
+
+def select_file_dialog(title: str, filetypes: list, mode: str = "open", multiple: bool = False) -> Optional[Union[Path, List[Path]]]:
+    """
+    Open a native file dialog.
+    - mode: 'open' (file), 'save' (file), 'folder'
+    - multiple: for 'open' mode only, return list of Paths if True.
+    Returns Path(s) or None if cancelled or tkinter unavailable.
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+
+        if mode == "folder":
+            folder = filedialog.askdirectory(title=title)
+            root.destroy()
+            return Path(folder) if folder else None
+        elif mode == "open":
+            if multiple:
+                files = filedialog.askopenfilenames(title=title, filetypes=filetypes)
+                root.destroy()
+                return [Path(f) for f in files] if files else None
+            else:
+                file = filedialog.askopenfilename(title=title, filetypes=filetypes)
+                root.destroy()
+                return Path(file) if file else None
+        elif mode == "save":
+            file = filedialog.asksaveasfilename(title=title, filetypes=filetypes)
+            root.destroy()
+            return Path(file) if file else None
+        else:
+            raise ValueError("mode must be 'open', 'save', or 'folder'")
+    except (ImportError, tk.TclError):
+        return None
+
+
+def get_input_paths_interactive(prompt_text: str, filetypes: list) -> List[Path]:
+    """Let user select single image, multiple images, or a folder for batch processing."""
+    typer.echo(f"\n{prompt_text}")
+    typer.echo("  1. Single image (manual path or browse)")
+    typer.echo("  2. Multiple images (browse, multi-select)")
+    typer.echo("  3. Folder (process all images inside)")
+    choice = typer.prompt("Choose", type=str)
+
+    if choice == "1":
+        typer.echo("  1. Browse from file explorer")
+        typer.echo("  2. Enter path manually")
+        sub = typer.prompt("Choose", type=str)
+        if sub == "1":
+            path = select_file_dialog(f"Select {prompt_text}", filetypes, mode="open", multiple=False)
+            if path is None:
+                typer.echo("No file selected. Falling back to manual entry.")
+                path = Path(typer.prompt("Input image path"))
+            else:
+                typer.echo(f"Selected: {path}")
+            return [path]
+        else:
+            return [Path(typer.prompt("Input image path"))]
+
+    elif choice == "2":
+        paths = select_file_dialog(f"Select images ({prompt_text})", filetypes, mode="open", multiple=True)
+        if paths is None or len(paths) == 0:
+            typer.echo("No files selected. Falling back to single image entry.")
+            return [Path(typer.prompt("Input image path"))]
+        typer.echo(f"Selected {len(paths)} files.")
+        return paths
+
+    elif choice == "3":
+        folder = select_file_dialog(f"Select folder containing images", [], mode="folder")
+        if folder is None:
+            typer.echo("No folder selected. Falling back to single image entry.")
+            return [Path(typer.prompt("Input image path"))]
+        image_paths = [p for p in Path(folder).iterdir() if is_supported_image(p)]
+        if not image_paths:
+            typer.echo("No supported image files found in that folder. Falling back to single image entry.")
+            return [Path(typer.prompt("Input image path"))]
+        typer.echo(f"Found {len(image_paths)} supported images.")
+        return image_paths
+
+    else:
+        typer.echo("Invalid choice. Using single image manual entry.")
+        return [Path(typer.prompt("Input image path"))]
+
+
+def get_text_color() -> Tuple[int, int, int]:
+    """
+    Prompt user to choose a text color, using config as default.
+    Returns RGB tuple.
+    """
+    config = get_current_config()
+    default_hex = config.get("text_color", "#FFFFFF")
+    typer.echo(f"\nSelect text color (default: {default_hex}):")
+    typer.echo("  1. Black")
+    typer.echo("  2. White")
+    typer.echo("  3. Hex code (e.g., #FF5733)")
+    choice = typer.prompt("Choose", type=str)
+
+    if choice == "1":
+        return (0, 0, 0)
+    elif choice == "2":
+        return (255, 255, 255)
+    elif choice == "3":
+        while True:
+            hex_code = typer.prompt(f"Enter hex color (default {default_hex})", default=default_hex)
+            hex_code = hex_code.lstrip('#').upper()
+            if len(hex_code) == 6 and all(c in '0123456789ABCDEF' for c in hex_code):
+                r = int(hex_code[0:2], 16)
+                g = int(hex_code[2:4], 16)
+                b = int(hex_code[4:6], 16)
+                return (r, g, b)
+            else:
+                typer.echo("❌ Invalid hex code. Use format like FF5733 or #FF5733.")
+    else:
+        typer.echo("Invalid choice, using default white.")
+        return (255, 255, 255)
+
+
+def prompt_text_watermark_batch(input_paths: List[Path]):
+    """Apply text watermark to a list of images, saving to configured output_dir."""
+    config = get_current_config()
+    output_dir = get_output_dir()
+    text = typer.prompt("Watermark text")
+    pos_default = config.get("position", "bottom-right")
+    position = typer.prompt("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
+    default_font = get_default_font_path()
+    font_path_input = typer.prompt(
+        "Font path (leave empty to use Roboto font)",
+        default=config.get("font", "")
+    )
+    if font_path_input == "":
+        if default_font:
+            font_path = default_font
+        else:
+            font_path = None
+            typer.echo("⚠️  Bundled Roboto font not found, falling back to PIL default.", err=True)
+    else:
+        font_path = font_path_input
+
+    font_size = typer.prompt("Font size", default=config.get("font_size", 36))
+    opacity = typer.prompt("Opacity (0-1)", default=config.get("opacity", 0.5))
+    text_color = get_text_color()
+
+    for idx, input_path in enumerate(input_paths, 1):
+        output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
+        try:
+            add_text_watermark(
+                input_path=input_path,
+                output_path=output_path,
+                text=text,
+                position=position,
+                font_path=font_path,
+                font_size=int(font_size),
+                opacity=float(opacity),
+                text_color=text_color,
+            )
+            typer.echo(f"✅ [{idx}/{len(input_paths)}] {output_path}")
+        except Exception as e:
+            typer.echo(f"❌ [{idx}/{len(input_paths)}] Error on {input_path.name}: {e}", err=True)
+
+
+def prompt_image_watermark_batch(input_paths: List[Path]):
+    """Apply image watermark to a list of images, saving to configured output_dir."""
+    config = get_current_config()
+    output_dir = get_output_dir()
+    watermark_path = get_input_paths_interactive("Watermark image (logo)", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif")])[0]
+    pos_default = config.get("position", "bottom-right")
+    position = typer.prompt("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
+    scale = typer.prompt("Scale factor (1.0 = original)", default=config.get("scale", 1.0))
+    opacity = typer.prompt("Opacity (0-1)", default=config.get("opacity", 0.5))
+
+    for idx, input_path in enumerate(input_paths, 1):
+        output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
+        try:
+            add_image_watermark(
+                input_path=input_path,
+                output_path=output_path,
+                watermark_path=watermark_path,
+                position=position,
+                scale=float(scale),
+                opacity=float(opacity),
+            )
+            typer.echo(f"✅ [{idx}/{len(input_paths)}] {output_path}")
+        except Exception as e:
+            typer.echo(f"❌ [{idx}/{len(input_paths)}] Error on {input_path.name}: {e}", err=True)
+
+
+def prompt_text_watermark():
+    """Single‑image text watermark"""
+    typer.echo("\n--- Text Watermark (Single Image) ---")
+    input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
+    output_dir = get_output_dir()
+    output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
+    config = get_current_config()
+    text = typer.prompt("Watermark text")
+    pos_default = config.get("position", "bottom-right")
+    position = typer.prompt("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
+    default_font = get_default_font_path()
+    font_path_input = typer.prompt(
+        "Font path (leave empty to use Roboto font)",
+        default=config.get("font", "")
+    )
+    if font_path_input == "":
+        if default_font:
+            font_path = default_font
+        else:
+            font_path = None
+            typer.echo("⚠️  Bundled Roboto font not found, falling back to PIL default.", err=True)
+    else:
+        font_path = font_path_input
+
+    font_size = typer.prompt("Font size", default=config.get("font_size", 36))
+    opacity = typer.prompt("Opacity (0-1)", default=config.get("opacity", 0.5))
+    text_color = get_text_color()
+
+    try:
+        add_text_watermark(
+            input_path=input_path,
+            output_path=output_path,
+            text=text,
+            position=position,
+            font_path=font_path,
+            font_size=int(font_size),
+            opacity=float(opacity),
+            text_color=text_color,
+        )
+        typer.echo(f"✅ Text watermark added: {output_path}")
+    except Exception as e:
+        typer.echo(f"❌ Error: {e}", err=True)
+
+
+def prompt_image_watermark():
+    """Single‑image image watermark"""
+    typer.echo("\n--- Image Watermark (Single Image) ---")
+    input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
+    output_dir = get_output_dir()
+    output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
+    config = get_current_config()
+    watermark_path = get_input_paths_interactive("Watermark image (logo)", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif")])[0]
+    pos_default = config.get("position", "bottom-right")
+    position = typer.prompt("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
+    scale = typer.prompt("Scale factor (1.0 = original)", default=config.get("scale", 1.0))
+    opacity = typer.prompt("Opacity (0-1)", default=config.get("opacity", 0.5))
+
+    try:
+        add_image_watermark(
+            input_path=input_path,
+            output_path=output_path,
+            watermark_path=watermark_path,
+            position=position,
+            scale=float(scale),
+            opacity=float(opacity),
+        )
+        typer.echo(f"✅ Image watermark added: {output_path}")
+    except Exception as e:
+        typer.echo(f"❌ Error: {e}", err=True)
+
+
+def manage_configurations():
+    """Submenu for managing config profiles."""
+    while True:
+        typer.echo("\n--- Manage Configurations ---")
+        current_profile = get_current_profile_name()
+        typer.echo(f"Current profile: {current_profile}")
+        typer.echo("  1. List all profiles")
+        typer.echo("  2. Switch to another profile")
+        typer.echo("  3. Create new profile (copy from current or defaults)")
+        typer.echo("  4. Delete a profile (cannot delete default)")
+        typer.echo("  5. Back to main menu")
+        choice = typer.prompt("Select option", type=str)
+
+        if choice == "1":
+            profiles = list_profiles()
+            typer.echo("\nAvailable profiles:")
+            for p in profiles:
+                marker = "*" if p == current_profile else " "
+                typer.echo(f"  {marker} {p}")
+            typer.prompt("\nPress Enter to continue", default="")
+        elif choice == "2":
+            profiles = list_profiles()
+            typer.echo("\nAvailable profiles:")
+            for i, p in enumerate(profiles, 1):
+                typer.echo(f"  {i}. {p}")
+            sel = typer.prompt("Select profile by number or name", default="")
+            try:
+                idx = int(sel) - 1
+                if 0 <= idx < len(profiles):
+                    new_profile = profiles[idx]
+                else:
+                    new_profile = sel
+            except ValueError:
+                new_profile = sel
+            if switch_profile(new_profile):
+                typer.echo(f"Switched to profile '{new_profile}'")
+            else:
+                typer.echo(f"Profile '{new_profile}' does not exist.")
+            typer.prompt("\nPress Enter to continue", default="")
+        elif choice == "3":
+            new_name = typer.prompt("Name for new profile")
+            if not new_name or not new_name.strip():
+                typer.echo("Invalid name.")
+                continue
+            use_current = typer.confirm("Copy from current profile?", default=True)
+            source = current_profile if use_current else None
+            if create_profile(new_name, source):
+                typer.echo(f"Profile '{new_name}' created.")
+            else:
+                typer.echo(f"Profile '{new_name}' already exists.")
+            typer.prompt("\nPress Enter to continue", default="")
+        elif choice == "4":
+            profiles = [p for p in list_profiles() if p != DEFAULT_PROFILE_NAME]
+            if not profiles:
+                typer.echo("No deletable profiles (only default exists).")
+            else:
+                typer.echo("\nDeletable profiles:")
+                for i, p in enumerate(profiles, 1):
+                    typer.echo(f"  {i}. {p}")
+                sel = typer.prompt("Select profile to delete by number or name", default="")
+                try:
+                    idx = int(sel) - 1
+                    if 0 <= idx < len(profiles):
+                        to_delete = profiles[idx]
+                    else:
+                        to_delete = sel
+                except ValueError:
+                    to_delete = sel
+                if to_delete == DEFAULT_PROFILE_NAME:
+                    typer.echo("Cannot delete default profile.")
+                elif delete_profile(to_delete):
+                    typer.echo(f"Profile '{to_delete}' deleted.")
+                else:
+                    typer.echo(f"Profile '{to_delete}' does not exist.")
+            typer.prompt("\nPress Enter to continue", default="")
+        elif choice == "5":
+            break
+        else:
+            typer.echo("Invalid choice, try again.")
+
+
+@app.callback(invoke_without_command=True)
+def main_menu(ctx: typer.Context):
+    """Interactive menu for watermarking tool. Run without arguments."""
+    if ctx.invoked_subcommand is not None:
+        return
+
+    clear_screen()
+    typer.echo("Welcome to Watermark CLI Tool\n")
+
+    while True:
+        typer.echo("Main Menu:")
+        typer.echo("  1. Text watermark (single image)")
+        typer.echo("  2. Image watermark (single image)")
+        typer.echo("  3. Batch text watermark (multiple images/folder)")
+        typer.echo("  4. Batch image watermark (multiple images/folder)")
+        typer.echo("  5. Manage configurations (profiles)")
+        typer.echo("  6. Exit")
+        choice = typer.prompt("Select option", type=str)
+
+        if choice == "1":
+            prompt_text_watermark()
+            typer.prompt("\nPress Enter to continue", default="")
+            clear_screen()
+        elif choice == "2":
+            prompt_image_watermark()
+            typer.prompt("\nPress Enter to continue", default="")
+            clear_screen()
+        elif choice == "3":
+            inputs = get_input_paths_interactive(
+                "Select images for batch text watermark",
+                [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
+            )
+            prompt_text_watermark_batch(inputs)
+            typer.prompt("\nPress Enter to continue", default="")
+            clear_screen()
+        elif choice == "4":
+            inputs = get_input_paths_interactive(
+                "Select images for batch image watermark",
+                [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
+            )
+            prompt_image_watermark_batch(inputs)
+            typer.prompt("\nPress Enter to continue", default="")
+            clear_screen()
+        elif choice == "5":
+            manage_configurations()
+            clear_screen()
+        elif choice == "6":
+            typer.echo("Goodbye!")
+            raise typer.Exit()
+        else:
+            typer.echo("Invalid choice, try again.")
+
+
+if __name__ == "__main__":
+    app()
