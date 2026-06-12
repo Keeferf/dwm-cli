@@ -10,6 +10,9 @@ ALLOWED_EXTENSIONS = {
 def is_supported_image(path: Path) -> bool:
     """
     Check whether the file extension is supported by Pillow.
+
+    Returns:
+        bool: True if the file extension is in the set of supported extensions.
     """
     return path.suffix.lower() in ALLOWED_EXTENSIONS
 
@@ -17,6 +20,9 @@ def is_supported_image(path: Path) -> bool:
 def validate_image(path: Path) -> bool:
     """
     Verify that the file is a valid image Pillow can open.
+
+    Returns:
+        bool: True if the image can be opened and verified without error.
     """
     try:
         with Image.open(path) as img:
@@ -29,7 +35,13 @@ def validate_image(path: Path) -> bool:
 def ensure_valid_image(path: Path) -> None:
     """
     Validate both the extension and image contents.
-    Raises ValueError if validation fails.
+
+    Raises:
+        FileNotFoundError: If the image file does not exist.
+        ValueError: If the image format is unsupported or the file is corrupted.
+
+    Returns:
+        None
     """
     if not path.exists():
         raise FileNotFoundError(f"Image not found: {path}")
@@ -51,8 +63,8 @@ def ensure_rgb(
     """
     Convert an image to RGB if needed.
 
-    Useful when saving to formats that do not support alpha channels,
-    such as JPEG.
+    Returns:
+        Image.Image: The RGB-converted image.
     """
     with Image.open(image_path) as img:
         if img.mode in ("RGBA", "LA", "P"):
