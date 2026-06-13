@@ -2,6 +2,8 @@
 
 from rich.prompt import Prompt, Confirm
 from rich.panel import Panel
+from rich.table import Table
+from rich import box
 
 from dwm_cli.config.settings import (
     list_profiles,
@@ -9,9 +11,10 @@ from dwm_cli.config.settings import (
     create_profile,
     delete_profile,
     get_current_profile_name,
-    DEFAULT_PROFILE_NAME
+    DEFAULT_PROFILE_NAME,
+    load_config,
 )
-from dwm_cli.ui.console import console, create_numbered_table, create_profile_table, wait_for_enter
+from dwm_cli.ui.console import console, wait_for_enter
 from dwm_cli.ui.menu_utils import interactive_menu
 
 
@@ -20,14 +23,50 @@ def manage_configurations() -> None:
 
     # ----- Internal action functions -----
     def action_list_profiles():
+        """Show all profiles with their full configuration settings."""
         current = get_current_profile_name()
         profiles = list_profiles()
-        table = create_profile_table(profiles, current)
-        console.print(table)
+
+        if not profiles:
+            console.print("[yellow]No profiles found.[/]")
+            wait_for_enter()
+            return
+
+        for profile in profiles:
+            try:
+                settings = load_config(profile)
+            except Exception as e:
+                console.print(f"[red]Error loading settings for '{profile}': {e}[/]")
+                continue
+
+            # Build a two‑column table of settings (key / value)
+            setting_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+            setting_table.add_column("Setting", style="cyan", no_wrap=True)
+            setting_table.add_column("Value", style="white")
+
+            for key, value in settings.items():
+                value_str = str(value)
+                if len(value_str) > 60 and key == "font":
+                    value_str = "..." + value_str[-50:]
+                setting_table.add_row(key, value_str)
+
+            # Panel title: profile name, bold green if active
+            title_style = "bold green" if profile == current else "bold"
+            border_style = "green" if profile == current else "blue"
+            panel = Panel(
+                setting_table,
+                title=f"[{title_style}]{profile}[/]",
+                border_style=border_style,
+                padding=(0, 1)          # <-- your preferred padding
+            )
+            console.print(panel)
+            console.print()  # blank line between profiles
+
         wait_for_enter()
 
     def action_switch_profile():
         profiles = list_profiles()
+        from dwm_cli.ui.console import create_numbered_table
         table = create_numbered_table(profiles, title="Select Profile")
         console.print(table)
         sel = Prompt.ask("Select profile by number or name", default="")
@@ -66,6 +105,7 @@ def manage_configurations() -> None:
             console.print("[yellow]No deletable profiles (only default exists).[/]")
             wait_for_enter()
             return
+        from dwm_cli.ui.console import create_numbered_table
         table = create_numbered_table(profiles, title="Deletable Profiles")
         console.print(table)
         sel = Prompt.ask("Select profile to delete by number or name", default="")
@@ -91,7 +131,7 @@ def manage_configurations() -> None:
         ("Switch to another profile", action_switch_profile),
         ("Create new profile (copy from current or defaults)", action_create_profile),
         ("Delete a profile (cannot delete default)", action_delete_profile),
-        ("Back to main menu", None),   # None signals exit
+        ("Back to main menu", None),
     ]
     options = [label for label, _ in menu_items]
 
@@ -100,10 +140,10 @@ def manage_configurations() -> None:
         title = f"Manage Configurations – Current: {current_profile}"
 
         idx = interactive_menu(options, title=title)
-        if idx is None:          # Esc/q pressed -> treat as "Back"
+        if idx is None:
             break
 
         _, action = menu_items[idx]
-        if action is None:       # Back selected
+        if action is None:
             break
-        action()                 # Execute the chosen action
+        action()
