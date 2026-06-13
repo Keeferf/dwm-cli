@@ -3,5 +3,6 @@ Name: digital-watermarking-cli
 Version: 0.1.0
 Summary: Digital Watermarking CLI tool with interactive menu
 Author-email: Your Name <you@example.com>
+Requires-Python: >=3.9
 Requires-Dist: typer>=0.9.0
 Requires-Dist: Pillow>=9.0.0

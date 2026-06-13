@@ -1,5 +1,6 @@
 import json
 import shutil
+from importlib.resources import files
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -8,10 +9,27 @@ CURRENT_PROFILE_FILE = Path.home() / ".watermark_current_profile"
 DEFAULT_PROFILE_NAME = "default"
 DEFAULT_OUTPUT_DIR = str(Path.home() / "Downloads")
 
+# ----- Locate bundled Roboto font (Python 3.9+ only) -----
+def _get_bundled_font_path() -> str:
+    """Return absolute path to the bundled Roboto font, or empty string if not found."""
+    try:
+        font_path = files("digital_watermarking_cli") / "assets" / "fonts" / "Roboto-Regular.ttf"
+        if font_path.is_file():
+            return str(font_path)
+    except (OSError, TypeError, AttributeError):
+        pass
+    # Fallback for development when package is not installed (optional)
+    dev_path = Path(__file__).parent.parent / "assets" / "fonts" / "Roboto-Regular.ttf"
+    if dev_path.exists():
+        return str(dev_path)
+    return ""
+
+ROBOTO_FONT_PATH = _get_bundled_font_path()
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "opacity": 0.5,
     "position": "bottom-right",
-    "font": "",
+    "font": ROBOTO_FONT_PATH,
     "font_size": 36,
     "output_format": "png",
     "output_dir": DEFAULT_OUTPUT_DIR,
@@ -21,32 +39,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
 
 def _ensure_config_dir() -> None:
-    """Create config directory if it doesn't exist.
-
-    Returns:
-        None
-    """
+    """Create config directory if it doesn't exist."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _get_profile_path(profile_name: str) -> Path:
-    """Return full path to a profile's JSON file.
-
-    Args:
-        profile_name (str): Name of the profile.
-
-    Returns:
-        Path: Full path to the profile JSON file.
-    """
+    """Return full path to a profile's JSON file."""
     return CONFIG_DIR / f"{profile_name}.json"
 
 
 def _create_default_profile() -> None:
-    """Create default profile with DEFAULT_CONFIG if missing.
-
-    Returns:
-        None
-    """
+    """Create default profile with DEFAULT_CONFIG if missing."""
     _ensure_config_dir()
     default_path = _get_profile_path(DEFAULT_PROFILE_NAME)
     if not default_path.exists():
@@ -55,11 +58,7 @@ def _create_default_profile() -> None:
 
 
 def _get_current_profile_name() -> str:
-    """Read the currently active profile name, fallback to 'default'.
-
-    Returns:
-        str: Name of the current active profile.
-    """
+    """Read the currently active profile name, fallback to 'default'."""
     if CURRENT_PROFILE_FILE.exists():
         try:
             name = CURRENT_PROFILE_FILE.read_text().strip()
@@ -71,14 +70,7 @@ def _get_current_profile_name() -> str:
 
 
 def _set_current_profile_name(profile_name: str) -> None:
-    """Write the active profile name to the current profile file.
-
-    Args:
-        profile_name (str): Name of the profile to set as active.
-
-    Returns:
-        None
-    """
+    """Write the active profile name to the current profile file."""
     CURRENT_PROFILE_FILE.write_text(profile_name)
 
 
@@ -86,14 +78,8 @@ def load_config(profile_name: Optional[str] = None) -> Dict[str, Any]:
     """Load configuration from the specified profile (or current active profile).
 
     If profile does not exist, fall back to default profile.
-
-    Args:
-        profile_name (Optional[str]): Name of the profile to load. If None, uses current active profile.
-
-    Returns:
-        Dict[str, Any]: Merged configuration dictionary with defaults applied.
     """
-    _create_default_profile() 
+    _create_default_profile()
 
     if profile_name is None:
         profile_name = _get_current_profile_name()
@@ -114,17 +100,7 @@ def load_config(profile_name: Optional[str] = None) -> Dict[str, Any]:
 
 
 def save_config(config: Dict[str, Any], profile_name: Optional[str] = None) -> None:
-    """Save configuration to the specified profile (or current active profile).
-
-    Creates the profile if it doesn't exist.
-
-    Args:
-        config (Dict[str, Any]): Configuration dictionary to save.
-        profile_name (Optional[str]): Name of the profile to save to. If None, uses current active profile.
-
-    Returns:
-        None
-    """
+    """Save configuration to the specified profile (or current active profile)."""
     if profile_name is None:
         profile_name = _get_current_profile_name()
     _ensure_config_dir()
@@ -134,27 +110,18 @@ def save_config(config: Dict[str, Any], profile_name: Optional[str] = None) -> N
 
 
 def list_profiles() -> list:
-    """Return list of available profile names (without .json extension).
-
-    Returns:
-        list: Sorted list of profile names, always includes the default profile.
-    """
+    """Return list of available profile names (without .json extension)."""
     _ensure_config_dir()
     profiles = [p.stem for p in CONFIG_DIR.glob("*.json")]
     if DEFAULT_PROFILE_NAME not in profiles:
-        profiles.append(DEFAULT_PROFILE_NAME)  # ensure default always present
+        profiles.append(DEFAULT_PROFILE_NAME)
     return sorted(set(profiles))
 
 
 def create_profile(profile_name: str, source_profile: Optional[str] = None) -> bool:
     """Create a new profile, optionally copying from an existing profile.
 
-    Args:
-        profile_name (str): Name for the new profile.
-        source_profile (Optional[str]): Name of an existing profile to copy from.
-
-    Returns:
-        bool: True if successful, False if profile already exists.
+    Returns True if successful, False if profile already exists.
     """
     _ensure_config_dir()
     new_path = _get_profile_path(profile_name)
@@ -165,7 +132,6 @@ def create_profile(profile_name: str, source_profile: Optional[str] = None) -> b
         if src_path.exists():
             shutil.copy(src_path, new_path)
             return True
-    # No source or source missing: start with DEFAULT_CONFIG
     with open(new_path, "w") as f:
         json.dump(DEFAULT_CONFIG, f, indent=2)
     return True
@@ -174,11 +140,7 @@ def create_profile(profile_name: str, source_profile: Optional[str] = None) -> b
 def delete_profile(profile_name: str) -> bool:
     """Delete a profile. Cannot delete the default profile.
 
-    Args:
-        profile_name (str): Name of the profile to delete.
-
-    Returns:
-        bool: True if deleted successfully, False if profile is default or does not exist.
+    Returns True if deleted successfully, False if profile is default or does not exist.
     """
     if profile_name == DEFAULT_PROFILE_NAME:
         return False
@@ -194,11 +156,7 @@ def delete_profile(profile_name: str) -> bool:
 def switch_profile(profile_name: str) -> bool:
     """Switch the current active profile. Must exist.
 
-    Args:
-        profile_name (str): Name of the profile to switch to.
-
-    Returns:
-        bool: True if switch succeeded, False if profile does not exist.
+    Returns True if switch succeeded, False if profile does not exist.
     """
     if not _get_profile_path(profile_name).exists():
         return False
@@ -207,9 +165,5 @@ def switch_profile(profile_name: str) -> bool:
 
 
 def get_current_profile_name() -> str:
-    """Public helper to get the current profile name.
-
-    Returns:
-        str: Name of the currently active profile.
-    """
+    """Public helper to get the current profile name."""
     return _get_current_profile_name()
