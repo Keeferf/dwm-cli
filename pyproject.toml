@@ -1,0 +1,20 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0"]
+
+[project]
+authors = [{ name = "Your Name", email = "you@example.com" }]
+dependencies = ["typer>=0.9.0", "Pillow>=9.0.0", "readchar>=4.0"]
+description = "Digital Watermarking CLI tool"
+name = "dwm-cli"
+requires-python = ">=3.9"
+version = "0.1.0"
+
+[project.scripts]
+dwm-cli = "dwm_cli.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dwm_cli = ["assets/fonts/*.ttf", "assets/banner.txt"]
