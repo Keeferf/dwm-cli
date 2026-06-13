@@ -14,9 +14,6 @@ build/
 # Environment variables
 .env
 
-# IDE
-.vscode/
-
 # Testing / tooling (optional but common)
 .pytest_cache/
 .mypy_cache/
