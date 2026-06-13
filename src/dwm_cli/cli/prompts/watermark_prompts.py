@@ -8,7 +8,7 @@ from rich.panel import Panel
 
 from dwm_cli.core.visible_watermark import add_text_watermark, add_image_watermark
 from dwm_cli.utils.image_helpers import validate_image
-from dwm_cli.ui.console import console
+from dwm_cli.ui.console import console, wait_for_enter
 from dwm_cli.cli.helpers import (
     get_current_config,
     get_output_dir,
@@ -62,9 +62,10 @@ def prompt_text_watermark() -> None:
             opacity=float(opacity),
             text_color=text_color,
         )
-        console.print(f"[bold green]✓ Text watermark added:[/] {output_path}")
+        console.print(Panel(f"[bold green]✓ Text watermark added:[/] {output_path}", border_style="green"))
     except Exception as e:
-        console.print(f"[bold red]Error:[/] {e}")
+        console.print(Panel(f"[bold red]Error:[/] {e}", border_style="red"))
+    wait_for_enter()
 
 
 def prompt_text_watermark_batch(input_paths: List[Path]) -> None:
@@ -79,6 +80,7 @@ def prompt_text_watermark_batch(input_paths: List[Path]) -> None:
 
     if not valid_paths:
         console.print("[red]No valid images to process.[/]")
+        wait_for_enter()
         return
 
     console.print(Panel("[bold]Batch Text Watermark[/]", style="cyan"))
@@ -130,7 +132,8 @@ def prompt_text_watermark_batch(input_paths: List[Path]) -> None:
                 console.print(f"[red]Error on {input_path.name}: {e}[/]")
                 progress.update(task, advance=1, description=f"[red]✗ {input_path.name} failed")
     
-    console.print("[bold green]Batch text watermarking completed![/]")
+    console.print(Panel("[bold green]Batch text watermarking completed![/]", border_style="green"))
+    wait_for_enter()
 
 
 def prompt_image_watermark() -> None:
@@ -157,6 +160,7 @@ def prompt_image_watermark() -> None:
 
     if not validate_image(watermark_path):
         console.print(f"[red]Watermark image is invalid or corrupted: {watermark_path}[/]")
+        wait_for_enter()
         return
 
     config = get_current_config()
@@ -173,9 +177,10 @@ def prompt_image_watermark() -> None:
             scale=float(scale),
             opacity=float(opacity),
         )
-        console.print(f"[bold green]✓ Image watermark added:[/] {output_path}")
+        console.print(Panel(f"[bold green]✓ Image watermark added:[/] {output_path}", border_style="green"))
     except Exception as e:
-        console.print(f"[bold red]Error:[/] {e}")
+        console.print(Panel(f"[bold red]Error:[/] {e}", border_style="red"))
+    wait_for_enter()
 
 
 def prompt_image_watermark_batch(input_paths: List[Path]) -> None:
@@ -190,6 +195,7 @@ def prompt_image_watermark_batch(input_paths: List[Path]) -> None:
 
     if not valid_paths:
         console.print("[red]No valid images to process.[/]")
+        wait_for_enter()
         return
 
     console.print(Panel("[bold]Batch Image Watermark[/]", style="cyan"))
@@ -207,6 +213,7 @@ def prompt_image_watermark_batch(input_paths: List[Path]) -> None:
 
     if not validate_image(watermark_path):
         console.print(f"[red]Watermark image is invalid or corrupted: {watermark_path}[/]")
+        wait_for_enter()
         return
 
     config = get_current_config()
@@ -239,4 +246,5 @@ def prompt_image_watermark_batch(input_paths: List[Path]) -> None:
                 console.print(f"[red]Error on {input_path.name}: {e}[/]")
                 progress.update(task, advance=1, description=f"[red]✗ {input_path.name} failed")
     
-    console.print("[bold green]Batch image watermarking completed![/]")
+    console.print(Panel("[bold green]Batch image watermarking completed![/]", border_style="green"))
+    wait_for_enter()

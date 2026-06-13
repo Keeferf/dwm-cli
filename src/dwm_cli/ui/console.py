@@ -1,15 +1,29 @@
 """Rich console setup and helper utilities."""
 
-from rich.console import Console
+from rich.console import Console, RenderableType  # corrected import
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
+from rich.text import Text
 from pathlib import Path
-from typing import Dict, Any
-
+from typing import Dict, Any, Optional
 
 # Global console instance
 console = Console()
+
+# Global header that will be shown on every menu screen
+_global_header: Optional[RenderableType] = None
+
+
+def set_global_header(header: RenderableType) -> None:
+    """Store the header (banner + credits) to be reused across menus."""
+    global _global_header
+    _global_header = header
+
+
+def get_global_header() -> Optional[RenderableType]:
+    """Return the stored global header, if any."""
+    return _global_header
 
 
 def clear_screen() -> None:
@@ -117,3 +131,12 @@ def display_info_table(config: Dict[str, Any], output_dir: Path, profile: str) -
     )
     console.print(panel)
     console.print()
+
+
+def wait_for_enter(message: str = "Press Enter to continue") -> None:
+    """
+    Display a styled panel and wait for the user to press Enter.
+    """
+    panel = Panel(f"[dim]{message}[/]", border_style="blue", padding=(0, 1))
+    console.print(panel)
+    input()

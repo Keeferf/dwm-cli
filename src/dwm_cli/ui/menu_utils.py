@@ -7,7 +7,7 @@ from rich.panel import Panel
 from rich.live import Live
 from rich.console import Group, RenderableType
 
-from dwm_cli.ui.console import console
+from dwm_cli.ui.console import console, get_global_header
 
 
 def interactive_menu(
@@ -19,10 +19,15 @@ def interactive_menu(
     """
     Show an interactive menu with arrow key navigation.
     Each option is prefixed with a bullet (•) and highlighted with reverse video when selected.
+    If no header is provided, uses the global header (if any).
     """
     if not options:
         return None
     selected = 0
+
+    # Use global header if no explicit header given
+    if header is None:
+        header = get_global_header()
 
     def render() -> RenderableType:
         lines = []

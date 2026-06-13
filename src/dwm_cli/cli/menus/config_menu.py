@@ -11,8 +11,8 @@ from dwm_cli.config.settings import (
     get_current_profile_name,
     DEFAULT_PROFILE_NAME
 )
-from dwm_cli.ui.console import console, create_numbered_table, create_profile_table
-from dwm_cli.ui.menu_utils import interactive_menu          # <-- new import
+from dwm_cli.ui.console import console, create_numbered_table, create_profile_table, wait_for_enter
+from dwm_cli.ui.menu_utils import interactive_menu
 
 
 def manage_configurations() -> None:
@@ -24,7 +24,7 @@ def manage_configurations() -> None:
         profiles = list_profiles()
         table = create_profile_table(profiles, current)
         console.print(table)
-        Prompt.ask("\nPress Enter to continue", default="")
+        wait_for_enter()
 
     def action_switch_profile():
         profiles = list_profiles()
@@ -40,31 +40,31 @@ def manage_configurations() -> None:
         except ValueError:
             new_profile = sel
         if switch_profile(new_profile):
-            console.print(f"[green]Switched to profile '{new_profile}'[/]")
+            console.print(f"[green]✓ Switched to profile '{new_profile}'[/]")
         else:
-            console.print(f"[red]Profile '{new_profile}' does not exist.[/]")
-        Prompt.ask("\nPress Enter to continue", default="")
+            console.print(f"[red]✗ Profile '{new_profile}' does not exist.[/]")
+        wait_for_enter()
 
     def action_create_profile():
         current = get_current_profile_name()
-        new_name = Prompt.ask("Name for new profile")
+        new_name = Prompt.ask("[cyan]Name for new profile[/]")
         if not new_name or not new_name.strip():
             console.print("[red]Invalid name.[/]")
-            Prompt.ask("\nPress Enter to continue", default="")
+            wait_for_enter()
             return
         use_current = Confirm.ask("Copy from current profile?", default=True)
         source = current if use_current else None
         if create_profile(new_name, source):
-            console.print(f"[green]Profile '{new_name}' created.[/]")
+            console.print(f"[green]✓ Profile '{new_name}' created.[/]")
         else:
-            console.print(f"[red]Profile '{new_name}' already exists.[/]")
-        Prompt.ask("\nPress Enter to continue", default="")
+            console.print(f"[red]✗ Profile '{new_name}' already exists.[/]")
+        wait_for_enter()
 
     def action_delete_profile():
         profiles = [p for p in list_profiles() if p != DEFAULT_PROFILE_NAME]
         if not profiles:
             console.print("[yellow]No deletable profiles (only default exists).[/]")
-            Prompt.ask("\nPress Enter to continue", default="")
+            wait_for_enter()
             return
         table = create_numbered_table(profiles, title="Deletable Profiles")
         console.print(table)
@@ -80,10 +80,10 @@ def manage_configurations() -> None:
         if to_delete == DEFAULT_PROFILE_NAME:
             console.print("[red]Cannot delete default profile.[/]")
         elif delete_profile(to_delete):
-            console.print(f"[green]Profile '{to_delete}' deleted.[/]")
+            console.print(f"[green]✓ Profile '{to_delete}' deleted.[/]")
         else:
-            console.print(f"[red]Profile '{to_delete}' does not exist.[/]")
-        Prompt.ask("\nPress Enter to continue", default="")
+            console.print(f"[red]✗ Profile '{to_delete}' does not exist.[/]")
+        wait_for_enter()
 
     # Define menu items as (label, action)
     menu_items = [
@@ -107,4 +107,3 @@ def manage_configurations() -> None:
         if action is None:       # Back selected
             break
         action()                 # Execute the chosen action
-        # After action, loop continues (menu redrawn automatically)

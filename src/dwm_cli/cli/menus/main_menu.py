@@ -8,7 +8,7 @@ from rich.prompt import Prompt
 from rich.console import Group
 from rich.text import Text
 
-from dwm_cli.ui.console import console, clear_screen
+from dwm_cli.ui.console import console, clear_screen, set_global_header
 from dwm_cli.ui.menu_utils import interactive_menu
 from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
 from dwm_cli.cli.prompts.watermark_prompts import (
@@ -121,6 +121,8 @@ def show_main_menu() -> None:
     """Display and handle the main menu with animated header and keyboard navigation."""
     # Build the animated header once (this prints the typewriter effect)
     persistent_header = build_animated_header()
+    # Store it globally so other menus can use it
+    set_global_header(persistent_header)
 
     # ----- Action functions -----
     def action_text_watermark():
@@ -169,7 +171,6 @@ def show_main_menu() -> None:
         idx = interactive_menu(
             options,
             title="Main Menu",
-            header=persistent_header,
         )
         if idx is None:   # Esc/q pressed
             break
@@ -180,4 +181,4 @@ def show_main_menu() -> None:
         else:
             # Clear the Live screen before running the action
             console.clear()
-            action()
+            action()    
