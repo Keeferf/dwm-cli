@@ -16,20 +16,17 @@ from rich.panel import Panel
 from rich.prompt import Prompt, Confirm, IntPrompt, FloatPrompt
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from rich import box
+from PIL import ImageColor
 
-# Initialize Rich console
 console = Console()
-
 app = typer.Typer(help="Watermarking CLI Tool", no_args_is_help=False)
 
 
 def get_current_config():
-    """Load the current active profile config."""
     return load_config()
 
 
 def get_default_font_path() -> str:
-    """Return absolute path to the bundled Roboto-Regular.ttf, or empty string if missing."""
     try:
         with resources.path("digital_watermarking_cli.core", "Roboto-Regular.ttf") as font_path:
             if font_path.exists():
@@ -39,11 +36,13 @@ def get_default_font_path() -> str:
         return ""
 
 
+def get_font_display_name(font_path: str) -> str:
+    if not font_path:
+        return "Roboto-Regular.ttf (default)"
+    return Path(font_path).name
+
+
 def get_output_dir():
-    """
-    Return output directory from current config.
-    If config has no output_dir or it's empty, default to Downloads folder.
-    """
     config = get_current_config()
     out = config.get("output_dir", "")
     if out:
@@ -55,17 +54,10 @@ def get_output_dir():
 
 
 def clear_screen():
-    """Clear terminal for cleaner menus"""
     print("\033[2J\033[H", end="")
 
 
 def select_file_dialog(title: str, filetypes: list, mode: str = "open", multiple: bool = False) -> Optional[Union[Path, List[Path]]]:
-    """
-    Open a native file dialog.
-    - mode: 'open' (file), 'save' (file), 'folder'
-    - multiple: for 'open' mode only, return list of Paths if True.
-    Returns Path(s) or None if cancelled or tkinter unavailable.
-    """
     try:
         import tkinter as tk
         from tkinter import filedialog
@@ -98,7 +90,6 @@ def select_file_dialog(title: str, filetypes: list, mode: str = "open", multiple
 
 
 def get_input_paths_interactive(prompt_text: str, filetypes: list) -> List[Path]:
-    """Let user select single image, multiple images, or a folder for batch processing."""
     console.print(f"\n[bold cyan]{prompt_text}[/]")
     console.print("  1. Single image (manual path or browse)")
     console.print("  2. Multiple images (browse, multi-select)")
@@ -145,42 +136,83 @@ def get_input_paths_interactive(prompt_text: str, filetypes: list) -> List[Path]
         return [Path(Prompt.ask("Input image path"))]
 
 
-def get_text_color() -> Tuple[int, int, int]:
-    """
-    Prompt user to choose a text color, using config as default.
-    Returns RGB tuple.
-    """
-    config = get_current_config()
-    default_hex = config.get("text_color", "#FFFFFF")
-    console.print(f"\nSelect text color (default: [white]{default_hex}[/]):")
-    console.print("  1. Black")
-    console.print("  2. White")
-    console.print("  3. Hex code (e.g., #FF5733)")
-    choice = Prompt.ask("Choose", choices=["1", "2", "3"], default="1")
+def color_to_rgb(color: str) -> Tuple[int, int, int]:
+    try:
+        return ImageColor.getrgb(color)
+    except ValueError:
+        return (255, 255, 255)
 
-    if choice == "1":
-        return (0, 0, 0)
-    elif choice == "2":
-        return (255, 255, 255)
-    elif choice == "3":
-        while True:
-            hex_code = Prompt.ask(f"Enter hex color", default=default_hex)
-            hex_code = hex_code.lstrip('#').upper()
-            if len(hex_code) == 6 and all(c in '0123456789ABCDEF' for c in hex_code):
-                r = int(hex_code[0:2], 16)
-                g = int(hex_code[2:4], 16)
-                b = int(hex_code[4:6], 16)
-                return (r, g, b)
-            else:
-                console.print("[red]Invalid hex code. Use format like FF5733 or #FF5733.[/]")
-    else:
-        console.print("[yellow]Invalid choice, using default white.[/]")
-        return (255, 255, 255)
+
+def show_profile_info():
+    """Display the currently active profile and its relevant settings using Rich formatting."""
+    config = get_current_config()
+    profile = get_current_profile_name()
+
+    # Create a table with two columns (setting and value)
+    table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+    table.add_column("Setting", style="dim cyan", no_wrap=True)
+    table.add_column("Value", style="bold white")
+
+    def get_val(key, default="—"):
+        return config.get(key, default)
+
+    table.add_row("Profile", f"[cyan]{profile}[/]")
+    table.add_row("Position", get_val("position", "bottom-right"))
+    table.add_row("Opacity", f"{get_val('opacity', 0.5):.2f}")
+    table.add_row("Font size", str(get_val("font_size", 36)))
+    table.add_row("Text color", get_val("text_color", "white"))
+    table.add_row("Image scale", f"{get_val('scale', 1.0):.2f}")
+    table.add_row("Output dir", f"[dim]{get_output_dir()}[/]")
+
+    panel = Panel(
+        table,
+        title="[bold green]Active Profile[/]",
+        border_style="blue",
+        padding=(0, 1)
+    )
+    console.print(panel)
+    console.print()
+
+
+def prompt_text_watermark():
+    console.print(Panel("[bold]Text Watermark (Single Image)[/]", style="cyan"))
+    show_profile_info()
+
+    input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
+    output_dir = get_output_dir()
+    output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
+
+    config = get_current_config()
+    text = Prompt.ask("Watermark text")
+
+    position = config.get("position", "bottom-right")
+    font_path = config.get("font", "") or None
+    if font_path and not Path(font_path).exists():
+        console.print(f"[yellow]Font file '{font_path}' not found, using PIL default.[/]")
+        font_path = None
+    font_size = config.get("font_size", 36)
+    opacity = config.get("opacity", 0.5)
+    # Changed default fallback from '#FFFFFF' to 'white'
+    text_color_str = config.get("text_color", "white")
+    text_color = color_to_rgb(text_color_str)
+
+    try:
+        add_text_watermark(
+            input_path=input_path,
+            output_path=output_path,
+            text=text,
+            position=position,
+            font_path=font_path,
+            font_size=int(font_size),
+            opacity=float(opacity),
+            text_color=text_color,
+        )
+        console.print(f"[bold green]✓ Text watermark added:[/] {output_path}")
+    except Exception as e:
+        console.print(f"[bold red]Error:[/] {e}")
 
 
 def prompt_text_watermark_batch(input_paths: List[Path]):
-    """Apply text watermark to a list of images, saving to configured output_dir."""
-    # Pre-validate images, skip invalid/corrupt ones
     valid_paths = []
     for p in input_paths:
         if validate_image(p):
@@ -192,28 +224,23 @@ def prompt_text_watermark_batch(input_paths: List[Path]):
         console.print("[red]No valid images to process.[/]")
         return
 
+    console.print(Panel("[bold]Batch Text Watermark[/]", style="cyan"))
+    show_profile_info()
+
     config = get_current_config()
     output_dir = get_output_dir()
     text = Prompt.ask("Watermark text")
-    pos_default = config.get("position", "bottom-right")
-    position = Prompt.ask("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
-    default_font = get_default_font_path()
-    font_path_input = Prompt.ask(
-        "Font path (leave empty to use Roboto font)",
-        default=config.get("font", "")
-    )
-    if font_path_input == "":
-        if default_font:
-            font_path = default_font
-        else:
-            font_path = None
-            console.print("[yellow]Bundled Roboto font not found, falling back to PIL default.[/]")
-    else:
-        font_path = font_path_input
 
-    font_size = IntPrompt.ask("Font size", default=config.get("font_size", 36))
-    opacity = FloatPrompt.ask("Opacity (0-1)", default=config.get("opacity", 0.5))
-    text_color = get_text_color()
+    position = config.get("position", "bottom-right")
+    font_path = config.get("font", "") or None
+    if font_path and not Path(font_path).exists():
+        console.print(f"[yellow]Font file '{font_path}' not found, using PIL default.[/]")
+        font_path = None
+    font_size = config.get("font_size", 36)
+    opacity = config.get("opacity", 0.5)
+    # Changed default fallback from '#FFFFFF' to 'white'
+    text_color_str = config.get("text_color", "white")
+    text_color = color_to_rgb(text_color_str)
 
     with Progress(
         TextColumn("[progress.description]{task.description}"),
@@ -224,7 +251,7 @@ def prompt_text_watermark_batch(input_paths: List[Path]):
         transient=False,
     ) as progress:
         task = progress.add_task("[cyan]Applying text watermark...", total=len(valid_paths))
-        for idx, input_path in enumerate(valid_paths, 1):
+        for input_path in valid_paths:
             output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
             try:
                 add_text_watermark(
@@ -244,8 +271,40 @@ def prompt_text_watermark_batch(input_paths: List[Path]):
     console.print("[bold green]Batch text watermarking completed![/]")
 
 
+def prompt_image_watermark():
+    console.print(Panel("[bold]Image Watermark (Single Image)[/]", style="cyan"))
+    show_profile_info()
+
+    input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
+    output_dir = get_output_dir()
+    output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
+
+    config = get_current_config()
+    watermark_path = get_input_paths_interactive("Watermark image (logo)", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif")])[0]
+
+    if not validate_image(watermark_path):
+        console.print(f"[red]Watermark image is invalid or corrupted: {watermark_path}[/]")
+        return
+
+    position = config.get("position", "bottom-right")
+    scale = config.get("scale", 1.0)
+    opacity = config.get("opacity", 0.5)
+
+    try:
+        add_image_watermark(
+            input_path=input_path,
+            output_path=output_path,
+            watermark_path=watermark_path,
+            position=position,
+            scale=float(scale),
+            opacity=float(opacity),
+        )
+        console.print(f"[bold green]✓ Image watermark added:[/] {output_path}")
+    except Exception as e:
+        console.print(f"[bold red]Error:[/] {e}")
+
+
 def prompt_image_watermark_batch(input_paths: List[Path]):
-    """Apply image watermark to a list of images, saving to configured output_dir."""
     valid_paths = []
     for p in input_paths:
         if validate_image(p):
@@ -257,6 +316,9 @@ def prompt_image_watermark_batch(input_paths: List[Path]):
         console.print("[red]No valid images to process.[/]")
         return
 
+    console.print(Panel("[bold]Batch Image Watermark[/]", style="cyan"))
+    show_profile_info()
+
     config = get_current_config()
     output_dir = get_output_dir()
     watermark_path = get_input_paths_interactive("Watermark image (logo)", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif")])[0]
@@ -265,10 +327,9 @@ def prompt_image_watermark_batch(input_paths: List[Path]):
         console.print(f"[red]Watermark image is invalid or corrupted: {watermark_path}[/]")
         return
 
-    pos_default = config.get("position", "bottom-right")
-    position = Prompt.ask("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
-    scale = FloatPrompt.ask("Scale factor (1.0 = original)", default=config.get("scale", 1.0))
-    opacity = FloatPrompt.ask("Opacity (0-1)", default=config.get("opacity", 0.5))
+    position = config.get("position", "bottom-right")
+    scale = config.get("scale", 1.0)
+    opacity = config.get("opacity", 0.5)
 
     with Progress(
         TextColumn("[progress.description]{task.description}"),
@@ -279,7 +340,7 @@ def prompt_image_watermark_batch(input_paths: List[Path]):
         transient=False,
     ) as progress:
         task = progress.add_task("[cyan]Applying image watermark...", total=len(valid_paths))
-        for idx, input_path in enumerate(valid_paths, 1):
+        for input_path in valid_paths:
             output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
             try:
                 add_image_watermark(
@@ -297,79 +358,7 @@ def prompt_image_watermark_batch(input_paths: List[Path]):
     console.print("[bold green]Batch image watermarking completed![/]")
 
 
-def prompt_text_watermark():
-    """Single-image text watermark"""
-    console.print(Panel("[bold]Text Watermark (Single Image)[/]", style="cyan"))
-    input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
-    output_dir = get_output_dir()
-    output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
-    config = get_current_config()
-    text = Prompt.ask("Watermark text")
-    pos_default = config.get("position", "bottom-right")
-    position = Prompt.ask("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
-    default_font = get_default_font_path()
-    font_path_input = Prompt.ask(
-        "Font path (leave empty to use Roboto font)",
-        default=config.get("font", "")
-    )
-    if font_path_input == "":
-        if default_font:
-            font_path = default_font
-        else:
-            font_path = None
-            console.print("[yellow]Bundled Roboto font not found, falling back to PIL default.[/]")
-    else:
-        font_path = font_path_input
-
-    font_size = IntPrompt.ask("Font size", default=config.get("font_size", 36))
-    opacity = FloatPrompt.ask("Opacity (0-1)", default=config.get("opacity", 0.5))
-    text_color = get_text_color()
-
-    try:
-        add_text_watermark(
-            input_path=input_path,
-            output_path=output_path,
-            text=text,
-            position=position,
-            font_path=font_path,
-            font_size=int(font_size),
-            opacity=float(opacity),
-            text_color=text_color,
-        )
-        console.print(f"[bold green]✓ Text watermark added:[/] {output_path}")
-    except Exception as e:
-        console.print(f"[bold red]Error:[/] {e}")
-
-
-def prompt_image_watermark():
-    """Single-image image watermark"""
-    console.print(Panel("[bold]Image Watermark (Single Image)[/]", style="cyan"))
-    input_path = get_input_paths_interactive("Source image to watermark", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")])[0]
-    output_dir = get_output_dir()
-    output_path = output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
-    config = get_current_config()
-    watermark_path = get_input_paths_interactive("Watermark image (logo)", [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif")])[0]
-    pos_default = config.get("position", "bottom-right")
-    position = Prompt.ask("Position (preset: bottom-right, top-left, center, etc. or X,Y)", default=pos_default)
-    scale = FloatPrompt.ask("Scale factor (1.0 = original)", default=config.get("scale", 1.0))
-    opacity = FloatPrompt.ask("Opacity (0-1)", default=config.get("opacity", 0.5))
-
-    try:
-        add_image_watermark(
-            input_path=input_path,
-            output_path=output_path,
-            watermark_path=watermark_path,
-            position=position,
-            scale=float(scale),
-            opacity=float(opacity),
-        )
-        console.print(f"[bold green]✓ Image watermark added:[/] {output_path}")
-    except Exception as e:
-        console.print(f"[bold red]Error:[/] {e}")
-
-
 def manage_configurations():
-    """Submenu for managing config profiles."""
     while True:
         current_profile = get_current_profile_name()
         menu_content = (
@@ -469,7 +458,24 @@ def main_menu(ctx: typer.Context):
         return
 
     clear_screen()
-    console.print(Panel("[bold cyan]Welcome to Watermark CLI Tool[/]", style="green", expand=False))
+
+    # ASCII art for DWM-CLI (each line ends with a space to balance the right border)
+    ascii_art = r"""
+    ██████╗ ██╗    ██╗███╗   ███╗      ██████╗██╗     ██╗ 
+    ██╔══██╗██║    ██║████╗ ████║     ██╔════╝██║     ██║ 
+    ██║  ██║██║ █╗ ██║██╔████╔██║     ██║     ██║     ██║ 
+    ██║  ██║██║███╗██║██║╚██╔╝██║     ██║     ██║     ██║ 
+    ██████╔╝╚███╔███╔╝██║ ╚═╝ ██║     ╚██████╗███████╗██║ 
+    ╚═════╝  ╚══╝╚══╝ ╚═╝     ╚═╝      ╚═════╝╚══════╝╚═╝ 
+    """
+    # Display the ASCII art inside a purple panel
+    console.print(Panel(ascii_art, style="purple", expand=False))
+
+    # Attribution and clickable link
+    github_url = "https://github.com/keeferf"
+    console.print("[dim]Made by: Keefer[/]")
+    console.print(f"[dim]My Github: [link={github_url}]{github_url}[/link][/dim]")
+    console.print()  
 
     while True:
         menu_options = (
@@ -511,7 +517,7 @@ def main_menu(ctx: typer.Context):
             manage_configurations()
             clear_screen()
         elif choice == "6":
-            console.print("[bold green]Goodbye! 👋[/]")
+            console.print("[bold green]Goodbye![/]")
             raise typer.Exit()
         else:
             console.print("[red]Invalid choice, try again.[/]")

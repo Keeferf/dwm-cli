@@ -33,7 +33,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "font_size": 36,
     "output_format": "png",
     "output_dir": DEFAULT_OUTPUT_DIR,
-    "text_color": "#FFFFFF",
+    "text_color": "white",
     "scale": 1.0,
 }
 
