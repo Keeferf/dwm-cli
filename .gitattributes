@@ -1,1 +1,5 @@
-*.py text eol=lf
+# Auto-detect text files and ensure LF line endings (optional global rule)
+* text=auto eol=lf
+
+# Explicitly treat banner.txt as binary – no line ending conversion, no whitespace mangling
+assets/banner.txt binary

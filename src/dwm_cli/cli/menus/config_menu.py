@@ -12,12 +12,13 @@ from dwm_cli.config.settings import (
     DEFAULT_PROFILE_NAME
 )
 from dwm_cli.ui.console import console, create_numbered_table, create_profile_table
+from dwm_cli.ui.menu_utils import interactive_menu          # <-- new import
 
 
 def manage_configurations() -> None:
-    """Interactive menu for managing configuration profiles using dictionary mapping."""
+    """Interactive menu for managing configuration profiles using keyboard navigation."""
 
-    # ----- Internal action functions (no return value needed) -----
+    # ----- Internal action functions -----
     def action_list_profiles():
         current = get_current_profile_name()
         profiles = list_profiles()
@@ -84,36 +85,26 @@ def manage_configurations() -> None:
             console.print(f"[red]Profile '{to_delete}' does not exist.[/]")
         Prompt.ask("\nPress Enter to continue", default="")
 
-    def action_back():
-        # No action needed – just signals to exit the config menu loop
-        pass
-
-    # Map option keys to their action functions
-    menu_actions = {
-        "1": action_list_profiles,
-        "2": action_switch_profile,
-        "3": action_create_profile,
-        "4": action_delete_profile,
-        "5": action_back,
-    }
+    # Define menu items as (label, action)
+    menu_items = [
+        ("List all profiles", action_list_profiles),
+        ("Switch to another profile", action_switch_profile),
+        ("Create new profile (copy from current or defaults)", action_create_profile),
+        ("Delete a profile (cannot delete default)", action_delete_profile),
+        ("Back to main menu", None),   # None signals exit
+    ]
+    options = [label for label, _ in menu_items]
 
     while True:
         current_profile = get_current_profile_name()
-        menu_content = (
-            f"[bold]Current profile:[/] [cyan]{current_profile}[/]\n\n"
-            "1. List all profiles\n"
-            "2. Switch to another profile\n"
-            "3. Create new profile (copy from current or defaults)\n"
-            "4. Delete a profile (cannot delete default)\n"
-            "5. Back to main menu"
-        )
-        console.print(Panel(menu_content, title="Manage Configurations", border_style="blue"))
-        choice = Prompt.ask("Select option", choices=list(menu_actions.keys()), default="5")
+        title = f"Manage Configurations – Current: {current_profile}"
 
-        action = menu_actions.get(choice)
-        if action:
-            action()
-            if choice == "5":   # Back option – break out of the config menu loop
-                break
-        else:
-            console.print("[red]Invalid choice, try again.[/]")
+        idx = interactive_menu(options, title=title)
+        if idx is None:          # Esc/q pressed -> treat as "Back"
+            break
+
+        _, action = menu_items[idx]
+        if action is None:       # Back selected
+            break
+        action()                 # Execute the chosen action
+        # After action, loop continues (menu redrawn automatically)
