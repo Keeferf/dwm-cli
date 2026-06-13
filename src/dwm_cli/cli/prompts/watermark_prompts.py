@@ -6,16 +6,16 @@ from rich.prompt import Prompt
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
 from rich.panel import Panel
 
-from digital_watermarking_cli.core.visible_watermark import add_text_watermark, add_image_watermark
-from digital_watermarking_cli.utils.image_helpers import validate_image
-from digital_watermarking_cli.ui.console import console
-from digital_watermarking_cli.cli.helpers import (
+from dwm_cli.core.visible_watermark import add_text_watermark, add_image_watermark
+from dwm_cli.utils.image_helpers import validate_image
+from dwm_cli.ui.console import console
+from dwm_cli.cli.helpers import (
     get_current_config,
     get_output_dir,
     color_to_rgb,
     get_default_font_path
 )
-from digital_watermarking_cli.cli.prompts.file_prompts import get_input_paths_interactive
+from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
 
 
 def prompt_text_watermark() -> None:
@@ -23,8 +23,8 @@ def prompt_text_watermark() -> None:
     console.print(Panel("[bold]Text Watermark (Single Image)[/]", style="cyan"))
     
     # Display current profile info
-    from digital_watermarking_cli.ui.console import display_info_table
-    from digital_watermarking_cli.config.settings import get_current_profile_name
+    from dwm_cli.ui.console import display_info_table
+    from dwm_cli.config.settings import get_current_profile_name
     config = get_current_config()
     display_info_table(config, get_output_dir(), get_current_profile_name())
 
@@ -83,8 +83,8 @@ def prompt_text_watermark_batch(input_paths: List[Path]) -> None:
 
     console.print(Panel("[bold]Batch Text Watermark[/]", style="cyan"))
     
-    from digital_watermarking_cli.ui.console import display_info_table
-    from digital_watermarking_cli.config.settings import get_current_profile_name
+    from dwm_cli.ui.console import display_info_table
+    from dwm_cli.config.settings import get_current_profile_name
     config = get_current_config()
     display_info_table(config, get_output_dir(), get_current_profile_name())
 
@@ -137,8 +137,8 @@ def prompt_image_watermark() -> None:
     """Interactive prompt for single image watermark."""
     console.print(Panel("[bold]Image Watermark (Single Image)[/]", style="cyan"))
     
-    from digital_watermarking_cli.ui.console import display_info_table
-    from digital_watermarking_cli.config.settings import get_current_profile_name
+    from dwm_cli.ui.console import display_info_table
+    from dwm_cli.config.settings import get_current_profile_name
     config = get_current_config()
     display_info_table(config, get_output_dir(), get_current_profile_name())
 
@@ -194,8 +194,8 @@ def prompt_image_watermark_batch(input_paths: List[Path]) -> None:
 
     console.print(Panel("[bold]Batch Image Watermark[/]", style="cyan"))
     
-    from digital_watermarking_cli.ui.console import display_info_table
-    from digital_watermarking_cli.config.settings import get_current_profile_name
+    from dwm_cli.ui.console import display_info_table
+    from dwm_cli.config.settings import get_current_profile_name
     config = get_current_config()
     display_info_table(config, get_output_dir(), get_current_profile_name())
 

@@ -5,8 +5,8 @@ from typing import Tuple
 from PIL import ImageColor
 import importlib.resources as resources
 
-from digital_watermarking_cli.config.settings import load_config, get_current_profile_name
-from digital_watermarking_cli.utils.image_helpers import is_supported_image
+from dwm_cli.config.settings import load_config, get_current_profile_name
+from dwm_cli.utils.image_helpers import is_supported_image
 
 
 def get_current_config():

@@ -3,15 +3,15 @@
 from rich.prompt import Prompt
 from rich.panel import Panel
 
-from digital_watermarking_cli.ui.console import console, clear_screen
-from digital_watermarking_cli.cli.prompts.file_prompts import get_input_paths_interactive
-from digital_watermarking_cli.cli.prompts.watermark_prompts import (
+from dwm_cli.ui.console import console, clear_screen
+from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
+from dwm_cli.cli.prompts.watermark_prompts import (
     prompt_text_watermark,
     prompt_image_watermark,
     prompt_text_watermark_batch,
     prompt_image_watermark_batch
 )
-from digital_watermarking_cli.cli.menus.config_menu import manage_configurations
+from dwm_cli.cli.menus.config_menu import manage_configurations
 
 
 def display_header() -> None:

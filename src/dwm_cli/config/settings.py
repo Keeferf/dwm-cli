@@ -13,7 +13,7 @@ DEFAULT_OUTPUT_DIR = str(Path.home() / "Downloads")
 def _get_bundled_font_path() -> str:
     """Return absolute path to the bundled Roboto font, or empty string if not found."""
     try:
-        font_path = files("digital_watermarking_cli") / "assets" / "fonts" / "Roboto-Regular.ttf"
+        font_path = files("dwm_cli") / "assets" / "fonts" / "Roboto-Regular.ttf"
         if font_path.is_file():
             return str(font_path)
     except (OSError, TypeError, AttributeError):

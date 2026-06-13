@@ -7,7 +7,7 @@ which handles all interactive prompts and workflows.
 
 import typer
 
-from digital_watermarking_cli.cli.menus.main_menu import show_main_menu
+from dwm_cli.cli.menus.main_menu import show_main_menu
 
 app = typer.Typer(help="Watermarking CLI Tool", no_args_is_help=False)
 

@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 from typing import Tuple, Optional, Union
 
-from digital_watermarking_cli.utils.image_helpers import ensure_valid_image, is_supported_image
+from dwm_cli.utils.image_helpers import ensure_valid_image, is_supported_image
 
 
 def _resolve_position(position, image_size, draw, text, font):

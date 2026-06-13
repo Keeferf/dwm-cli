@@ -3,7 +3,7 @@
 from rich.prompt import Prompt, Confirm
 from rich.panel import Panel
 
-from digital_watermarking_cli.config.settings import (
+from dwm_cli.config.settings import (
     list_profiles,
     switch_profile,
     create_profile,
@@ -11,7 +11,7 @@ from digital_watermarking_cli.config.settings import (
     get_current_profile_name,
     DEFAULT_PROFILE_NAME
 )
-from digital_watermarking_cli.ui.console import console, create_numbered_table, create_profile_table
+from dwm_cli.ui.console import console, create_numbered_table, create_profile_table
 
 
 def manage_configurations() -> None:

@@ -1,2 +1,0 @@
-[console_scripts]
-dwm-cli = digital_watermarking_cli.cli.main:app

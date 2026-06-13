@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import List, Optional
 from rich.prompt import Prompt
 
-from digital_watermarking_cli.utils.image_helpers import is_supported_image
-from digital_watermarking_cli.dialogs.file_dialog import select_file_dialog
-from digital_watermarking_cli.ui.console import console
+from dwm_cli.utils.image_helpers import is_supported_image
+from dwm_cli.dialogs.file_dialog import select_file_dialog
+from dwm_cli.ui.console import console
 
 
 def prompt_for_single_file(prompt_text: str, filetypes: list) -> Optional[Path]:
