@@ -13,5 +13,8 @@ version = "0.1.0"
 [project.scripts]
 dwm-cli = "digital_watermarking_cli.cli.main:app"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.setuptools.package-data]
 digital_watermarking_cli = ["assets/fonts/*.ttf"]

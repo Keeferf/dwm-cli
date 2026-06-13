@@ -2,12 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 from typing import Tuple, Optional, Union
 
-# Import from utils (sibling of core)
-try:
-    from ..utils.image_helpers import ensure_valid_image, is_supported_image
-except ImportError:
-    # Fallback when running as script (if needed)
-    from utils.image_helpers import ensure_valid_image, is_supported_image
+from digital_watermarking_cli.utils.image_helpers import ensure_valid_image, is_supported_image
 
 
 def _resolve_position(position, image_size, draw, text, font):
