@@ -32,7 +32,7 @@ def display_header() -> None:
     """Display a static purple border with an animated DWM CLI banner inside."""
     clear_screen()
 
-    # Banner provided by user (DWM and CLI separated by spaces)
+    # Banner – safe UTF‑8 block characters (will not corrupt on GitHub if encoding is UTF‑8)
     banner_lines = [
         "██████╗ ██╗    ██╗███╗   ███╗       ██████╗██╗     ██╗",
         "██╔══██╗██║    ██║████╗ ████║      ██╔════╝██║     ██║",
@@ -44,7 +44,7 @@ def display_header() -> None:
 
     max_width = max(len(line) for line in banner_lines)
 
-    # Border characters
+    # Border characters (box‑drawing, safe UTF‑8)
     top_left = "┌"
     top_right = "┐"
     bottom_left = "└"
