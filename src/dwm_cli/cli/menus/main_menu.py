@@ -1,6 +1,3 @@
-# main_menu.py
-"""Main menu and navigation for the watermarking CLI."""
-
 import sys
 import time
 from pathlib import Path
@@ -9,7 +6,7 @@ from rich.prompt import Prompt
 from rich.console import Group
 from rich.text import Text
 
-from dwm_cli.ui.console import console, clear_screen, set_global_header
+from dwm_cli.ui.console import console, set_global_header
 from dwm_cli.ui.menu_utils import interactive_menu
 from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
 from dwm_cli.cli.prompts.watermark_prompts import (
@@ -42,8 +39,6 @@ def animated_print(text: str, delay: float = 0.001, color_code: str = "\033[38;2
 def build_animated_header() -> Group:
     """
     Animate the banner, credit line, and GitHub link.
-
-    Returns a static Rich renderable of the final header for use in the Live menu.
 
     Returns:
         Group: A Rich Group containing the animated header elements.
@@ -168,25 +163,24 @@ def show_main_menu() -> None:
         console.print("[bold green]Goodbye![/]")
         return True
 
-    menu_items = [
-        ("Text watermark (single image)", action_text_watermark),
-        ("Image watermark (single image)", action_image_watermark),
-        ("Batch text watermark (multiple images/folder)", action_batch_text),
-        ("Batch image watermark (multiple images/folder)", action_batch_image),
-        ("Manage configurations (profiles)", action_manage_configs),
-        ("Exit", action_exit),
-    ]
-    options = [label for label, _ in menu_items]
+    # Dictionary mapping menu labels to action functions
+    menu_actions = {
+        "Text watermark (single image)": action_text_watermark,
+        "Image watermark (single image)": action_image_watermark,
+        "Batch text watermark (multiple images/folder)": action_batch_text,
+        "Batch image watermark (multiple images/folder)": action_batch_image,
+        "Manage configurations (profiles)": action_manage_configs,
+        "Exit": action_exit,
+    }
+    options = list(menu_actions.keys())
 
     while True:
-        idx = interactive_menu(
-            options,
-            title="Main Menu",
-        )
-        if idx is None:
+        idx = interactive_menu(options, title="Main Menu")
+        if idx is None:      # User pressed Esc/q
             break
-        _, action = menu_items[idx]
-        if action == action_exit:
+
+        action = menu_actions[options[idx]]
+        if action is action_exit:
             if action():
                 break
         else:
