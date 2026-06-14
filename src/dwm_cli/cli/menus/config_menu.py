@@ -1,3 +1,4 @@
+# config_menu.py
 """Configuration and profile management menu."""
 
 from rich.prompt import Prompt, Confirm
@@ -20,8 +21,6 @@ from dwm_cli.ui.menu_utils import interactive_menu
 
 def manage_configurations() -> None:
     """Interactive menu for managing configuration profiles using keyboard navigation."""
-
-    # ----- Internal action functions -----
     def action_list_profiles():
         """Show all profiles with their full configuration settings."""
         current = get_current_profile_name()
@@ -39,7 +38,6 @@ def manage_configurations() -> None:
                 console.print(f"[red]Error loading settings for '{profile}': {e}[/]")
                 continue
 
-            # Build a two‑column table of settings (key / value)
             setting_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
             setting_table.add_column("Setting", style="cyan", no_wrap=True)
             setting_table.add_column("Value", style="white")
@@ -50,21 +48,21 @@ def manage_configurations() -> None:
                     value_str = "..." + value_str[-50:]
                 setting_table.add_row(key, value_str)
 
-            # Panel title: profile name, bold green if active
             title_style = "bold green" if profile == current else "bold"
             border_style = "green" if profile == current else "blue"
             panel = Panel(
                 setting_table,
                 title=f"[{title_style}]{profile}[/]",
                 border_style=border_style,
-                padding=(0, 1)          # <-- your preferred padding
+                padding=(0, 1)
             )
             console.print(panel)
-            console.print()  # blank line between profiles
+            console.print()
 
         wait_for_enter()
 
     def action_switch_profile():
+        """Switch the active configuration profile."""
         profiles = list_profiles()
         from dwm_cli.ui.console import create_numbered_table
         table = create_numbered_table(profiles, title="Select Profile")
@@ -85,6 +83,7 @@ def manage_configurations() -> None:
         wait_for_enter()
 
     def action_create_profile():
+        """Create a new configuration profile, optionally copying from the current profile."""
         current = get_current_profile_name()
         new_name = Prompt.ask("[cyan]Name for new profile[/]")
         if not new_name or not new_name.strip():
@@ -100,6 +99,7 @@ def manage_configurations() -> None:
         wait_for_enter()
 
     def action_delete_profile():
+        """Delete a configuration profile (default profile cannot be deleted)."""
         profiles = [p for p in list_profiles() if p != DEFAULT_PROFILE_NAME]
         if not profiles:
             console.print("[yellow]No deletable profiles (only default exists).[/]")
@@ -125,7 +125,6 @@ def manage_configurations() -> None:
             console.print(f"[red]✗ Profile '{to_delete}' does not exist.[/]")
         wait_for_enter()
 
-    # Define menu items as (label, action)
     menu_items = [
         ("List all profiles", action_list_profiles),
         ("Switch to another profile", action_switch_profile),
