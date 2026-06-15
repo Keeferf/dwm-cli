@@ -19,6 +19,7 @@ def interactive_menu(
 ) -> Optional[int]:
     """
     Show an interactive menu with arrow key navigation.
+    Highlights the full width of the menu.
     """
     if not options:
         return None
@@ -28,14 +29,19 @@ def interactive_menu(
     if header is None:
         header = get_global_header()
 
+    # Compute the maximum line length (bullet + space + option text)
+    max_len = max(len(f"• {opt}") for opt in options)
+
     def render() -> RenderableType:
         lines = []
         for idx, opt in enumerate(options):
             line_text = f"• {opt}"
+            # Pad to full width (add spaces to the right)
+            padded = line_text.ljust(max_len)
             if idx == selected:
-                line = Text(line_text, style="reverse")
+                line = Text(padded, style="reverse")
             else:
-                line = Text(line_text)
+                line = Text(padded)
             lines.append(line)
         menu_panel = Panel(
             Group(*lines),
