@@ -1,5 +1,6 @@
 """File selection and input collection prompts."""
 
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
@@ -14,24 +15,32 @@ from dwm_cli.utils.image_helpers import validate_image
 ALL_FILES_FILETYPE = [("All files", "*")]
 
 
+class RetryAction(Enum):
+    """Actions to take when an invalid file is selected."""
+
+    BROWSE = "browse"
+    MANUAL = "manual"
+    CANCEL = "cancel"
+
+
 def _is_valid_image_file(path: Path) -> bool:
     """Check if a file exists and is a valid image (Pillow can open it)."""
     return path.exists() and validate_image(path)
 
 
-def _handle_invalid_selection() -> Optional[str]:
+def _handle_invalid_selection() -> Optional[RetryAction]:
     """
     Show a menu when an invalid file is selected.
     Returns:
-        "browse" -> try file browser again
-        "manual" -> go to manual entry
-        None -> cancel (return to caller, which may propagate cancellation)
+        RetryAction.BROWSE -> try file browser again
+        RetryAction.MANUAL -> go to manual entry
+        None -> cancel
     """
     options = ["Browse again", "Enter path manually", "Cancel"]
     idx = interactive_menu(options, title="Invalid file selected")
     if idx is None or idx == 2:  # Esc/q or Cancel
         return None
-    return "browse" if idx == 0 else "manual"
+    return RetryAction.BROWSE if idx == 0 else RetryAction.MANUAL
 
 
 def prompt_for_single_file(
@@ -75,9 +84,9 @@ def prompt_for_single_file(
                     action = _handle_invalid_selection()
                     if action is None:
                         break
-                    elif action == "browse":
+                    elif action == RetryAction.BROWSE:
                         continue
-                    else:  # manual
+                    else:  # RetryAction.MANUAL
                         idx = 1
                         break
         else:  # idx == 1 (Manual entry)
@@ -97,10 +106,10 @@ def prompt_for_single_file(
                     action = _handle_invalid_selection()
                     if action is None:
                         return None
-                    elif action == "browse":
+                    elif action == RetryAction.BROWSE:
                         idx = 0
                         break
-                    else:  # manual again, loop continues
+                    else:  # RetryAction.MANUAL again, loop continues
                         continue
 
 
@@ -150,12 +159,10 @@ def prompt_for_multiple_files(
             action = _handle_invalid_selection()
             if action is None:
                 return []
-            elif action == "browse":
+            elif action == RetryAction.BROWSE:
                 continue
             else:  # manual entry fallback for multiple
-                console.print(
-                    "[yellow]Multiple manual entry not supported. Falling back to single image.[/]"
-                )
+                console.print("[yellow]Multiple manual entry not supported.")
                 single = prompt_for_single_file("an image")
                 return [single] if single else []
 
