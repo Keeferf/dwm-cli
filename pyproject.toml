@@ -1,20 +1,61 @@
 [build-system]
-build-backend = "setuptools.build_meta"
 requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-authors = [{ name = "Your Name", email = "you@example.com" }]
-dependencies = ["typer>=0.9.0", "Pillow>=9.0.0", "readchar>=4.0"]
-description = "Digital Watermarking CLI tool"
 name = "dwm-cli"
-requires-python = ">=3.9"
 version = "0.1.0"
+description = "Digital Watermarking CLI tool"
+requires-python = ">=3.9"
+
+dependencies = [
+  "typer>=0.26.7",
+  "Pillow>=12.2.0",
+  "readchar>=4.2.2"
+]
 
 [project.scripts]
 dwm-cli = "dwm_cli.cli.main:app"
 
+# -----------------------
+# Packaging
+# -----------------------
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-dwm_cli = ["assets/fonts/*.ttf", "assets/banner.txt"]
+dwm_cli = [
+  "assets/fonts/*.ttf",
+  "assets/banner.txt"
+]
+
+# -----------------------
+# Black (formatting)
+# -----------------------
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+# -----------------------
+# Ruff (lint + import sorting)
+# -----------------------
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+# -----------------------
+# MyPy (type checking)
+# -----------------------
+[tool.mypy]
+python_version = "3.9"
+
+mypy_path = "src"
+
+ignore_missing_imports = true
+disallow_untyped_defs = false
+
+warn_return_any = true
+warn_unused_configs = true

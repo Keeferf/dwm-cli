@@ -1,8 +1,9 @@
-from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
-from typing import Tuple, Optional, Union
+from typing import Optional, Tuple, Union
 
-from dwm_cli.utils.image_helpers import ensure_valid_image, is_supported_image
+from PIL import Image, ImageDraw, ImageFont
+
+from dwm_cli.utils.image_helpers import ensure_valid_image
 
 
 def _resolve_position(position, image_size, draw, text, font):
@@ -16,8 +17,8 @@ def _resolve_position(position, image_size, draw, text, font):
     width, height = image_size
     if isinstance(position, str):
         # Try to parse as "X,Y"
-        if ',' in position:
-            x_str, y_str = position.split(',', 1)
+        if "," in position:
+            x_str, y_str = position.split(",", 1)
             try:
                 return int(x_str.strip()), int(y_str.strip())
             except ValueError:
@@ -67,7 +68,11 @@ def add_text_watermark(
     draw = ImageDraw.Draw(overlay)
 
     try:
-        font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+        font = (
+            ImageFont.truetype(font_path, font_size)
+            if font_path
+            else ImageFont.load_default()
+        )
     except IOError:
         font = ImageFont.load_default()
 
