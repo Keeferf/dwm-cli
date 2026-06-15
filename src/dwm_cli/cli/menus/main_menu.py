@@ -3,7 +3,6 @@ import time
 from pathlib import Path
 
 from rich.console import Group
-from rich.prompt import Prompt
 from rich.text import Text
 
 from dwm_cli.cli.menus.config_menu import manage_configurations
@@ -136,12 +135,12 @@ def show_main_menu() -> None:
     def action_text_watermark():
         """Prompt user for text watermark parameters and apply to a single image."""
         prompt_text_watermark()
-        Prompt.ask("\nPress Enter to continue", default="")
+        # No extra prompt here – prompt_text_watermark already calls wait_for_enter()
 
     def action_image_watermark():
         """Prompt user for image watermark parameters and apply to a single image."""
         prompt_image_watermark()
-        Prompt.ask("\nPress Enter to continue", default="")
+        # No extra prompt here – prompt_image_watermark already calls wait_for_enter()
 
     def action_batch_text():
         """Prompt user for text watermark parameters and apply to multiple images."""
@@ -150,7 +149,6 @@ def show_main_menu() -> None:
             [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")],
         )
         prompt_text_watermark_batch(inputs)
-        Prompt.ask("\nPress Enter to continue", default="")
 
     def action_batch_image():
         """Prompt user for image watermark parameters and apply to multiple images."""
@@ -159,7 +157,6 @@ def show_main_menu() -> None:
             [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")],
         )
         prompt_image_watermark_batch(inputs)
-        Prompt.ask("\nPress Enter to continue", default="")
 
     def action_manage_configs():
         """Open the configuration management submenu."""
