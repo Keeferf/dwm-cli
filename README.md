@@ -11,8 +11,6 @@
 ╚═════╝  ╚══╝╚══╝ ╚═╝     ╚═╝      ╚═════╝╚══════╝╚═╝
 ```
 
-**A powerful, user-friendly CLI tool for adding visible watermarks to images**
-
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
 [![Status](https://img.shields.io/badge/status-active-success)]()
 
