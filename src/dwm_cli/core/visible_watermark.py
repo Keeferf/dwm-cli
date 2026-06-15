@@ -152,6 +152,16 @@ def add_text_watermark(
     watermarked.convert("RGB").save(output_path, quality=95)
 
 
+# ========== FIX: Module-level worker for batch processing ==========
+def _batch_watermark_worker(args):
+    """
+    Worker function for parallel batch watermarking.
+    Args is a tuple of (input_path, output_path, text, position, font_path, font_size, opacity, text_color)
+    """
+    inp, out, txt, pos, fp, fs, op, tc = args
+    add_text_watermark(inp, out, txt, pos, fp, fs, op, tc)
+
+
 def add_text_watermark_batch(
     inputs: List[Tuple[Path, Path]],
     text: str,
@@ -175,12 +185,8 @@ def add_text_watermark_batch(
         for inp, out in inputs
     ]
 
-    def _worker(args):
-        inp, out, txt, pos, fp, fs, op, tc = args
-        add_text_watermark(inp, out, txt, pos, fp, fs, op, tc)
-
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        list(executor.map(_worker, args_list))
+        list(executor.map(_batch_watermark_worker, args_list))
 
 
 def add_image_watermark(
