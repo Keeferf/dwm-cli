@@ -1,10 +1,9 @@
 from pathlib import Path
+from typing import Optional
+
 from PIL import Image
 
-ALLOWED_EXTENSIONS = {
-    ext.lower()
-    for ext in Image.registered_extensions()
-}
+ALLOWED_EXTENSIONS = {ext.lower() for ext in Image.registered_extensions()}
 
 
 def is_supported_image(path: Path) -> bool:
@@ -56,10 +55,7 @@ def ensure_valid_image(path: Path) -> None:
         raise ValueError(f"Invalid or corrupted image file: {path}")
 
 
-def ensure_rgb(
-    image_path: Path,
-    output_path: Path | None = None
-) -> Image.Image:
+def ensure_rgb(image_path: Path, output_path: Optional[Path] = None) -> Image.Image:
     """
     Convert an image to RGB if needed.
 
@@ -68,11 +64,11 @@ def ensure_rgb(
     """
     with Image.open(image_path) as img:
         if img.mode in ("RGBA", "LA", "P"):
-            img = img.convert("RGB")
+            rgb_img = img.convert("RGB")
         else:
-            img = img.copy()
+            rgb_img = img.copy()
 
     if output_path:
-        img.save(output_path)
+        rgb_img.save(output_path)
 
-    return img
+    return rgb_img

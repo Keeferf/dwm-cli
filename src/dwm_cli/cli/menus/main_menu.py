@@ -2,23 +2,25 @@ import sys
 import time
 from pathlib import Path
 
-from rich.prompt import Prompt
 from rich.console import Group
+from rich.prompt import Prompt
 from rich.text import Text
 
-from dwm_cli.ui.console import console, set_global_header
-from dwm_cli.ui.menu_utils import interactive_menu
+from dwm_cli.cli.menus.config_menu import manage_configurations
 from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
 from dwm_cli.cli.prompts.watermark_prompts import (
-    prompt_text_watermark,
     prompt_image_watermark,
+    prompt_image_watermark_batch,
+    prompt_text_watermark,
     prompt_text_watermark_batch,
-    prompt_image_watermark_batch
 )
-from dwm_cli.cli.menus.config_menu import manage_configurations
+from dwm_cli.ui.console import console, set_global_header
+from dwm_cli.ui.menu_utils import interactive_menu
 
 
-def animated_print(text: str, delay: float = 0.001, color_code: str = "\033[38;2;125;122;188m") -> None:
+def animated_print(
+    text: str, delay: float = 0.001, color_code: str = "\033[38;2;125;122;188m"
+) -> None:
     """
     Print text character by character with ANSI true colour support.
 
@@ -106,10 +108,19 @@ def build_animated_header() -> Group:
     sys.stdout.write("\n")
 
     banner_text = Text()
-    banner_text.append(f"{top_left}{horizontal * (max_width + 2)}{top_right}\n", style="rgb(125,122,188)")
+    banner_text.append(
+        f"{top_left}{horizontal * (max_width + 2)}{top_right}\n",
+        style="rgb(125,122,188)",
+    )
     for line in banner_lines:
-        banner_text.append(f"{vertical} {line}{' ' * (max_width - len(line))} {vertical}\n", style="rgb(125,122,188)")
-    banner_text.append(f"{bottom_left}{horizontal * (max_width + 2)}{bottom_right}", style="rgb(125,122,188)")
+        banner_text.append(
+            f"{vertical} {line}{' ' * (max_width - len(line))} {vertical}\n",
+            style="rgb(125,122,188)",
+        )
+    banner_text.append(
+        f"{bottom_left}{horizontal * (max_width + 2)}{bottom_right}",
+        style="rgb(125,122,188)",
+    )
 
     credit_text = Text(credit, style="cyan")
     github_line = Text("> GitHub: ", style="cyan") + Text(github_url, style="cyan link")
@@ -136,7 +147,7 @@ def show_main_menu() -> None:
         """Prompt user for text watermark parameters and apply to multiple images."""
         inputs = get_input_paths_interactive(
             "Select images for batch text watermark",
-            [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
+            [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")],
         )
         prompt_text_watermark_batch(inputs)
         Prompt.ask("\nPress Enter to continue", default="")
@@ -145,7 +156,7 @@ def show_main_menu() -> None:
         """Prompt user for image watermark parameters and apply to multiple images."""
         inputs = get_input_paths_interactive(
             "Select images for batch image watermark",
-            [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
+            [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")],
         )
         prompt_image_watermark_batch(inputs)
         Prompt.ask("\nPress Enter to continue", default="")
@@ -160,7 +171,7 @@ def show_main_menu() -> None:
         Returns:
             bool: True to indicate exit.
         """
-        console.print("[bold green]Goodbye![/]")
+        console.clear()
         return True
 
     # Dictionary mapping menu labels to action functions
@@ -176,7 +187,7 @@ def show_main_menu() -> None:
 
     while True:
         idx = interactive_menu(options, title="Main Menu")
-        if idx is None:      # User pressed Esc/q
+        if idx is None:  # User pressed Esc/q
             break
 
         action = menu_actions[options[idx]]
