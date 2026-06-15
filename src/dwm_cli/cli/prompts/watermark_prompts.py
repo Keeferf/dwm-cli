@@ -144,10 +144,9 @@ def prompt_text_watermark_batch(input_paths: List[Path]) -> None:
                 progress.update(
                     task, advance=1, description=f"[red]✗ {input_path.name} failed"
                 )
+        # After loop, mark as completed
+        progress.update(task, description="[bold green]Completed![/]")
 
-    console.print(
-        Panel("[bold green]Batch text watermarking completed![/]", border_style="green")
-    )
     wait_for_enter()
 
 
@@ -279,10 +278,7 @@ def prompt_image_watermark_batch(input_paths: List[Path]) -> None:
                 progress.update(
                     task, advance=1, description=f"[red]✗ {input_path.name} failed"
                 )
+        # After loop, mark as completed
+        progress.update(task, description="[bold green]Completed![/]")
 
-    console.print(
-        Panel(
-            "[bold green]Batch image watermarking completed![/]", border_style="green"
-        )
-    )
     wait_for_enter()

@@ -8,18 +8,6 @@
 
   "python.analysis.extraPaths": ["${workspaceFolder}/src"],
 
-  "ruff.enable": true,
-
-  "mypy.enabled": true,
-
-  "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "always"
-    }
-  },
-
   "files.exclude": {
     "**/__pycache__": true,
     "**/*.pyc": true
