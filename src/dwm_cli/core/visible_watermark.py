@@ -3,8 +3,6 @@ from typing import Optional, Tuple, Union
 
 from PIL import Image, ImageDraw, ImageFont
 
-from dwm_cli.utils.image_helpers import ensure_valid_image
-
 
 def _resolve_position(position, image_size, draw, text, font):
     """
@@ -60,10 +58,11 @@ def add_text_watermark(
     Add a visible text watermark to an image.
     Position can be a tuple (x, y) or a string like "bottom-right", "center", etc.
     """
-    # Validate input image (exists, supported extension, not corrupted)
-    ensure_valid_image(input_path)
+    try:
+        base = Image.open(input_path).convert("RGBA")
+    except Exception as e:
+        raise ValueError(f"Cannot open or read image {input_path}: {e}") from e
 
-    base = Image.open(input_path).convert("RGBA")
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
@@ -99,15 +98,18 @@ def add_image_watermark(
     """
     Add an image (logo) watermark.
     Position can be a tuple (x, y) or a string like "bottom-right", "center", etc.
-    (For image watermarks, only tuple positions are currently supported;
-     if a string is given, it is converted to a simple preset based on image size.)
     """
-    # Validate both input image and watermark image
-    ensure_valid_image(input_path)
-    ensure_valid_image(watermark_path)
+    try:
+        base = Image.open(input_path).convert("RGBA")
+    except Exception as e:
+        raise ValueError(f"Cannot open or read image {input_path}: {e}") from e
 
-    base = Image.open(input_path).convert("RGBA")
-    watermark = Image.open(watermark_path).convert("RGBA")
+    try:
+        watermark = Image.open(watermark_path).convert("RGBA")
+    except Exception as e:
+        raise ValueError(
+            f"Cannot open or read watermark image {watermark_path}: {e}"
+        ) from e
 
     if scale != 1.0:
         new_size = (int(watermark.width * scale), int(watermark.height * scale))
