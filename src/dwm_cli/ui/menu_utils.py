@@ -1,11 +1,12 @@
 """Keyboard-navigable menus using readchar and rich Live rendering."""
 
 from typing import List, Optional
-from readchar import readkey, key
-from rich.text import Text
-from rich.panel import Panel
-from rich.live import Live
+
+from readchar import key, readkey
 from rich.console import Group, RenderableType
+from rich.live import Live
+from rich.panel import Panel
+from rich.text import Text
 
 from dwm_cli.ui.console import console, get_global_header
 
@@ -18,8 +19,6 @@ def interactive_menu(
 ) -> Optional[int]:
     """
     Show an interactive menu with arrow key navigation.
-    Each option is prefixed with a bullet (•) and highlighted with reverse video when selected.
-    If no header is provided, uses the global header (if any).
     """
     if not options:
         return None

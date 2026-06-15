@@ -2,12 +2,13 @@ import json
 import shutil
 from importlib.resources import files
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 CONFIG_DIR = Path.home() / ".watermark_configs"
 CURRENT_PROFILE_FILE = Path.home() / ".watermark_current_profile"
 DEFAULT_PROFILE_NAME = "default"
 DEFAULT_OUTPUT_DIR = str(Path.home() / "Downloads")
+
 
 # ----- Locate bundled Roboto font (Python 3.9+ only) -----
 def _get_bundled_font_path() -> str:
@@ -23,6 +24,7 @@ def _get_bundled_font_path() -> str:
     if dev_path.exists():
         return str(dev_path)
     return ""
+
 
 ROBOTO_FONT_PATH = _get_bundled_font_path()
 

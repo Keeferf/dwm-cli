@@ -1,24 +1,21 @@
-from rich.prompt import Prompt, Confirm
-from rich.panel import Panel
-from rich.table import Table
 from rich import box
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
 
 from dwm_cli.config.settings import (
-    list_profiles,
-    switch_profile,
+    DEFAULT_PROFILE_NAME,
     create_profile,
     delete_profile,
     get_current_profile_name,
-    DEFAULT_PROFILE_NAME,
+    list_profiles,
     load_config,
+    switch_profile,
 )
 from dwm_cli.ui.console import console, wait_for_enter
 from dwm_cli.ui.menu_utils import interactive_menu
 
 
 def manage_configurations() -> None:
-    """Interactive menu for managing configuration profiles using keyboard navigation."""
-
     def action_list_profiles():
         """Show all profiles in a single table with settings as columns."""
         current = get_current_profile_name()
@@ -29,7 +26,7 @@ def manage_configurations() -> None:
             wait_for_enter()
             return
 
-    # Load settings for the first profile to get the column names
+        # Load settings for the first profile to get the column names
         try:
             sample_settings = load_config(profiles[0])
         except Exception as e:
@@ -38,7 +35,12 @@ def manage_configurations() -> None:
             return
 
         # Build the table
-        table = Table(title="Configuration Profiles", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+        table = Table(
+            title="Configuration Profiles",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan",
+        )
         table.add_column("Profile Name", style="bold", no_wrap=True)
         for key in sample_settings.keys():
             table.add_column(key, overflow="fold")
@@ -74,12 +76,13 @@ def manage_configurations() -> None:
         """Switch the active configuration profile."""
         profiles = list_profiles()
         from dwm_cli.ui.console import create_numbered_table
+
         table = create_numbered_table(profiles, title="Select Profile")
         console.print(table)
 
         sel = Prompt.ask("Select profile by number or name", default="")
         # Map both number strings and names to the actual profile
-        profile_map = {str(i+1): p for i, p in enumerate(profiles)}
+        profile_map = {str(i + 1): p for i, p in enumerate(profiles)}
         profile_map.update({p: p for p in profiles})
         new_profile = profile_map.get(sel)
 
@@ -92,7 +95,6 @@ def manage_configurations() -> None:
         wait_for_enter()
 
     def action_create_profile():
-        """Create a new configuration profile, optionally copying from the current profile."""
         current = get_current_profile_name()
         new_name = Prompt.ask("[cyan]Name for new profile[/]")
         if not new_name or not new_name.strip():
@@ -118,11 +120,12 @@ def manage_configurations() -> None:
             return
 
         from dwm_cli.ui.console import create_numbered_table
+
         table = create_numbered_table(profiles, title="Deletable Profiles")
         console.print(table)
 
         sel = Prompt.ask("Select profile to delete by number or name", default="")
-        profile_map = {str(i+1): p for i, p in enumerate(profiles)}
+        profile_map = {str(i + 1): p for i, p in enumerate(profiles)}
         profile_map.update({p: p for p in profiles})
         to_delete = profile_map.get(sel)
 
@@ -155,7 +158,7 @@ def manage_configurations() -> None:
 
         try:
             idx = interactive_menu(options, title=title)
-            if idx is None:          # User pressed Esc/q
+            if idx is None:  # User pressed Esc/q
                 break
             menu_actions[options[idx]]()
         except StopIteration:
