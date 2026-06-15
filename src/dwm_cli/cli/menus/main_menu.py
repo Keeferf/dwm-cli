@@ -6,12 +6,17 @@ from rich.console import Group
 from rich.text import Text
 
 from dwm_cli.cli.menus.config_menu import manage_configurations
-from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
+from dwm_cli.cli.prompts.file_prompts import (
+    get_images_from_folder_prompt,
+    prompt_for_folder,
+    prompt_for_multiple_files,
+    prompt_for_single_file,
+)
 from dwm_cli.cli.prompts.watermark_prompts import (
-    prompt_image_watermark,
-    prompt_image_watermark_batch,
-    prompt_text_watermark,
-    prompt_text_watermark_batch,
+    process_image_watermark_batch,
+    process_image_watermark_single,
+    process_text_watermark_batch,
+    process_text_watermark_single,
 )
 from dwm_cli.ui.console import console, set_global_header
 from dwm_cli.ui.menu_utils import interactive_menu
@@ -127,70 +132,137 @@ def build_animated_header() -> Group:
     return Group(banner_text, credit_text, github_line, Text(""))
 
 
+# ----------------------------------------------------------------------
+# Submenus
+# ----------------------------------------------------------------------
+
+
+def show_text_watermark_menu() -> None:
+    """Submenu for text watermark options: single, batch multiple, batch folder."""
+    options = [
+        "Single image",
+        "Batch (multiple images)",
+        "Batch (folder)",
+        "Back",
+    ]
+    while True:
+        idx = interactive_menu(options, title="Text Watermark")
+        if idx is None or options[idx] == "Back":
+            break
+        elif idx == 0:  # Single
+            path = prompt_for_single_file("an image")
+            if path:
+                process_text_watermark_single(path)
+        elif idx == 1:  # Batch multiple
+            paths = prompt_for_multiple_files("images")
+            if paths:
+                process_text_watermark_batch(paths)
+        elif idx == 2:  # Batch folder
+            folder = prompt_for_folder()
+            if folder:
+                images = get_images_from_folder_prompt(folder)
+                if images:
+                    process_text_watermark_batch(images)
+        console.clear()  # Clear after action returns to submenu
+
+
+def show_image_watermark_menu() -> None:
+    """Submenu for image watermark options: single, batch multiple, batch folder."""
+    options = [
+        "Single image",
+        "Batch (multiple images)",
+        "Batch (folder)",
+        "Back",
+    ]
+    while True:
+        idx = interactive_menu(options, title="Image Watermark")
+        if idx is None or options[idx] == "Back":
+            break
+        elif idx == 0:  # Single
+            source = prompt_for_single_file("source image")
+            if not source:
+                continue
+            watermark = prompt_for_single_file("watermark image (logo)")
+            if watermark:
+                process_image_watermark_single(source, watermark)
+        elif idx == 1:  # Batch multiple
+            sources = prompt_for_multiple_files("source images")
+            if not sources:
+                continue
+            watermark = prompt_for_single_file("watermark image (logo)")
+            if watermark:
+                process_image_watermark_batch(sources, watermark)
+        elif idx == 2:  # Batch folder
+            folder = prompt_for_folder()
+            if not folder:
+                continue
+            sources = get_images_from_folder_prompt(folder)
+            if not sources:
+                continue
+            watermark = prompt_for_single_file("watermark image (logo)")
+            if watermark:
+                process_image_watermark_batch(sources, watermark)
+        console.clear()
+
+
+def show_visible_menu() -> None:
+    """Submenu for visible watermarking: text or image."""
+    options = ["Text watermark", "Image watermark", "Back"]
+    while True:
+        idx = interactive_menu(options, title="Visible Watermarking")
+        if idx is None or options[idx] == "Back":
+            break
+        elif idx == 0:  # Text
+            show_text_watermark_menu()
+        elif idx == 1:  # Image
+            show_image_watermark_menu()
+        console.clear()
+
+
+def show_more_features_menu() -> None:
+    """Placeholder for future encoding models (invisible watermarking)."""
+    options = ["Encoding models (coming soon)", "Back"]
+    while True:
+        idx = interactive_menu(options, title="More Features")
+        if idx is None or options[idx] == "Back":
+            break
+        elif idx == 0:
+            from dwm_cli.ui.console import wait_for_enter
+
+            console.print(
+                "[italic cyan]Invisible watermarking & encoding models are under development![/]"
+            )
+            wait_for_enter()
+            console.clear()
+
+
+# ----------------------------------------------------------------------
+# Main menu
+# ----------------------------------------------------------------------
+
+
 def show_main_menu() -> None:
-    """Display and handle the main menu with animated header and keyboard navigation."""
+    """Display and handle the main menu with animated header."""
     persistent_header = build_animated_header()
     set_global_header(persistent_header)
 
-    def action_text_watermark():
-        """Prompt user for text watermark parameters and apply to a single image."""
-        prompt_text_watermark()
-        # No extra prompt here – prompt_text_watermark already calls wait_for_enter()
-
-    def action_image_watermark():
-        """Prompt user for image watermark parameters and apply to a single image."""
-        prompt_image_watermark()
-        # No extra prompt here – prompt_image_watermark already calls wait_for_enter()
-
-    def action_batch_text():
-        """Prompt user for text watermark parameters and apply to multiple images."""
-        inputs = get_input_paths_interactive(
-            "Select images for batch text watermark",
-            [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")],
-        )
-        prompt_text_watermark_batch(inputs)
-
-    def action_batch_image():
-        """Prompt user for image watermark parameters and apply to multiple images."""
-        inputs = get_input_paths_interactive(
-            "Select images for batch image watermark",
-            [("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")],
-        )
-        prompt_image_watermark_batch(inputs)
-
-    def action_manage_configs():
-        """Open the configuration management submenu."""
-        manage_configurations()
-
-    def action_exit():
-        """Exit the application.
-
-        Returns:
-            bool: True to indicate exit.
-        """
-        console.clear()
-        return True
-
-    # Dictionary mapping menu labels to action functions
     menu_actions = {
-        "Text watermark (single image)": action_text_watermark,
-        "Image watermark (single image)": action_image_watermark,
-        "Batch text watermark (multiple images/folder)": action_batch_text,
-        "Batch image watermark (multiple images/folder)": action_batch_image,
-        "Manage configurations (profiles)": action_manage_configs,
-        "Exit": action_exit,
+        "Visible Watermarking": show_visible_menu,
+        "Manage configurations": manage_configurations,
+        "More features (encoding models)": show_more_features_menu,
+        "Exit": lambda: True,
     }
     options = list(menu_actions.keys())
 
     while True:
         idx = interactive_menu(options, title="Main Menu")
-        if idx is None:  # User pressed Esc/q
+        if idx is None:  # Esc/q pressed
             break
 
         action = menu_actions[options[idx]]
-        if action is action_exit:
-            if action():
-                break
+        if action is menu_actions["Exit"]:
+            console.clear()
+            break
         else:
             console.clear()
             action()
