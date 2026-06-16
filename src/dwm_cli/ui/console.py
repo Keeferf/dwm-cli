@@ -8,6 +8,9 @@ from rich.console import Console, RenderableType
 from rich.panel import Panel
 from rich.table import Table
 
+# Import the default config keys to ensure consistent column ordering
+from dwm_cli.config.settings import DEFAULT_CONFIG
+
 # Global console instance
 console = Console()
 
@@ -104,30 +107,41 @@ def create_profile_table(profiles: list, current_profile: str) -> Table:
 
 
 def display_info_table(config: Dict[str, Any], output_dir: Path, profile: str) -> None:
-    """Display current profile and settings in a formatted table."""
-
-    def get_val(key, default="—"):
-        return config.get(key, default)
-
-    rows = [
-        ("Profile", f"[cyan]{profile}[/]"),
-        ("Position", get_val("position", "bottom-right")),
-        ("Opacity", f"{get_val('opacity', 0.5):.2f}"),
-        ("Font size", str(get_val("font_size", 36))),
-        ("Text color", get_val("text_color", "white")),
-        ("Image scale", f"{get_val('scale', 1.0):.2f}"),
-        ("Output dir", f"[dim]{output_dir}[/]"),
-    ]
-
-    table = create_simple_table(rows)
-    panel = Panel(
-        table,
-        title="[bold green]Active Profile[/]",
-        border_style="blue",
-        padding=(0, 1),
+    """
+    Display current profile settings in a horizontal table,
+    matching the style of the configuration menu's profile list.
+    """
+    table = Table(
+        title=f"Active Profile: {profile}",
+        box=box.ROUNDED,
+        show_header=True,
+        header_style="bold cyan",
     )
-    console.print(panel)
-    console.print()
+    # First column: profile name
+    table.add_column("Profile Name", style="bold", no_wrap=True)
+    # One column per setting (order preserved from DEFAULT_CONFIG)
+    for key in DEFAULT_CONFIG.keys():
+        table.add_column(key, overflow="fold")
+
+    # Build the single row for the current profile
+    row = [profile]
+    for key in DEFAULT_CONFIG.keys():
+        value = config.get(key, "N/A")
+        if key == "output_dir":
+            value = str(
+                output_dir
+            )  # use the passed output_dir (may differ from config)
+        elif key == "font" and isinstance(value, str) and len(value) > 60:
+            value = "..." + value[-50:]  # truncate long font paths
+        elif key in ("opacity", "scale") and isinstance(value, (int, float)):
+            value = f"{float(value):.2f}"
+        else:
+            value = str(value)
+        row.append(value)
+
+    table.add_row(*row)
+    console.print(table)
+    console.print()  # blank line for readability
 
 
 def wait_for_enter(message: str = "Press Enter to continue") -> None:
