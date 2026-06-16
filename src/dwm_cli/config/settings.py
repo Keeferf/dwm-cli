@@ -4,7 +4,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-CONFIG_DIR = Path.home() / ".watermark_configs"
+CONFIG_DIR = Path.home() / ".dwm_cli_configs"
 CURRENT_PROFILE_FILE = Path.home() / ".watermark_current_profile"
 DEFAULT_PROFILE_NAME = "default"
 DEFAULT_OUTPUT_DIR = str(Path.home() / "Downloads")
