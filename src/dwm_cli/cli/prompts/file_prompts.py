@@ -53,7 +53,8 @@ def prompt_for_single_file(
     """
     while True:
         options = ["Browse from file explorer", "Enter path manually"]
-        idx = interactive_menu(options, title="Select input method")
+        # Use the prompt_text as the menu title to clarify what is being selected
+        idx = interactive_menu(options, title=f"Select {prompt_text}")
         if idx is None:
             return None
 
