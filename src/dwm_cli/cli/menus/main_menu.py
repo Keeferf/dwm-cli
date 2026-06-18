@@ -6,11 +6,12 @@ from rich.console import Group
 from rich.text import Text
 
 from dwm_cli.cli.menus.config_menu import manage_configurations
-from dwm_cli.cli.prompts.file_prompts import (
-    get_images_from_folder_prompt,
-    prompt_for_folder,
-    prompt_for_multiple_files,
-    prompt_for_single_file,
+from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
+from dwm_cli.cli.prompts.lsb_prompts import (
+    process_lsb_decode_batch,
+    process_lsb_decode_single,
+    process_lsb_encode_batch,
+    process_lsb_encode_single,
 )
 from dwm_cli.cli.prompts.watermark_prompts import (
     process_image_watermark_batch,
@@ -25,14 +26,7 @@ from dwm_cli.ui.menu_utils import interactive_menu
 def animated_print(
     text: str, delay: float = 0.001, color_code: str = "\033[38;2;125;122;188m"
 ) -> None:
-    """
-    Print text character by character with ANSI true colour support.
-
-    Args:
-        text: The string to print with animation.
-        delay: Time in seconds between printing each character.
-        color_code: ANSI escape sequence for the text colour.
-    """
+    """Print text character by character with ANSI true colour support."""
     sys.stdout.write(color_code)
     for ch in text:
         sys.stdout.write(ch)
@@ -43,12 +37,7 @@ def animated_print(
 
 
 def build_animated_header() -> Group:
-    """
-    Animate the banner, credit line, and GitHub link.
-
-    Returns:
-        Group: A Rich Group containing the animated header elements.
-    """
+    """Animate the banner, credit line, and GitHub link."""
     banner_path = Path(__file__).parent.parent.parent / "assets" / "banner.txt"
     banner_lines = banner_path.read_text(encoding="utf-8").splitlines()
     max_width = max(len(line) for line in banner_lines)
@@ -138,70 +127,50 @@ def build_animated_header() -> Group:
 
 
 def show_text_watermark_menu() -> None:
-    """Submenu for text watermark options: single, batch multiple, batch folder."""
-    options = [
-        "Single image",
-        "Batch (multiple images)",
-        "Batch (folder)",
-        "Back",
-    ]
+    """Submenu for text watermark options: single or batch."""
+    options = ["Single image", "Batch (multiple images)", "Back"]
     while True:
         idx = interactive_menu(options, title="Text Watermark")
         if idx is None or options[idx] == "Back":
             break
         elif idx == 0:  # Single
-            path = prompt_for_single_file("an image")
-            if path:
-                process_text_watermark_single(path)
-        elif idx == 1:  # Batch multiple
-            paths = prompt_for_multiple_files("images")
+            paths = get_input_paths_interactive("Select image", mode="single")
+            if paths:
+                process_text_watermark_single(paths[0])
+        elif idx == 1:  # Batch
+            paths = get_input_paths_interactive("Select images", mode="multiple")
             if paths:
                 process_text_watermark_batch(paths)
-        elif idx == 2:  # Batch folder
-            folder = prompt_for_folder()
-            if folder:
-                images = get_images_from_folder_prompt(folder)
-                if images:
-                    process_text_watermark_batch(images)
-        console.clear()  # Clear after action returns to submenu
+        console.clear()
 
 
 def show_image_watermark_menu() -> None:
-    """Submenu for image watermark options: single, batch multiple, batch folder."""
-    options = [
-        "Single image",
-        "Batch (multiple images)",
-        "Batch (folder)",
-        "Back",
-    ]
+    """Submenu for image watermark options: single or batch."""
+    options = ["Single image", "Batch (multiple images)", "Back"]
     while True:
         idx = interactive_menu(options, title="Image Watermark")
         if idx is None or options[idx] == "Back":
             break
         elif idx == 0:  # Single
-            source = prompt_for_single_file("source image")
-            if not source:
-                continue
-            watermark = prompt_for_single_file("watermark image (logo)")
-            if watermark:
-                process_image_watermark_single(source, watermark)
-        elif idx == 1:  # Batch multiple
-            sources = prompt_for_multiple_files("source images")
+            sources = get_input_paths_interactive("Select source image", mode="single")
             if not sources:
                 continue
-            watermark = prompt_for_single_file("watermark image (logo)")
+            watermark = get_input_paths_interactive(
+                "Select watermark image (logo)", mode="single"
+            )
             if watermark:
-                process_image_watermark_batch(sources, watermark)
-        elif idx == 2:  # Batch folder
-            folder = prompt_for_folder()
-            if not folder:
-                continue
-            sources = get_images_from_folder_prompt(folder)
+                process_image_watermark_single(sources[0], watermark[0])
+        elif idx == 1:  # Batch
+            sources = get_input_paths_interactive(
+                "Select source images", mode="multiple"
+            )
             if not sources:
                 continue
-            watermark = prompt_for_single_file("watermark image (logo)")
+            watermark = get_input_paths_interactive(
+                "Select watermark image (logo)", mode="single"
+            )
             if watermark:
-                process_image_watermark_batch(sources, watermark)
+                process_image_watermark_batch(sources, watermark[0])
         console.clear()
 
 
@@ -212,15 +181,15 @@ def show_visible_menu() -> None:
         idx = interactive_menu(options, title="Visible Watermarking")
         if idx is None or options[idx] == "Back":
             break
-        elif idx == 0:  # Text
+        elif idx == 0:
             show_text_watermark_menu()
-        elif idx == 1:  # Image
+        elif idx == 1:
             show_image_watermark_menu()
         console.clear()
 
 
 def show_more_features_menu() -> None:
-    """Placeholder for future encoding models (invisible watermarking)."""
+    """Placeholder for future encoding models."""
     options = ["Encoding models (coming soon)", "Back"]
     while True:
         idx = interactive_menu(options, title="More Features")
@@ -237,6 +206,47 @@ def show_more_features_menu() -> None:
 
 
 # ----------------------------------------------------------------------
+# LSB Submenu with Batch Decode
+# ----------------------------------------------------------------------
+
+
+def show_lsb_menu() -> None:
+    """Submenu for LSB steganography: encode or decode."""
+    options = [
+        "Encode (single image)",
+        "Encode (batch multiple)",
+        "Decode (single image)",
+        "Decode (batch multiple)",
+        "Back",
+    ]
+    while True:
+        idx = interactive_menu(options, title="LSB Steganography")
+        if idx is None or options[idx] == "Back":
+            break
+        elif idx == 0:  # Encode single
+            paths = get_input_paths_interactive("Select image", mode="single")
+            if paths:
+                process_lsb_encode_single(paths[0])
+        elif idx == 1:  # Encode batch
+            paths = get_input_paths_interactive("Select images", mode="multiple")
+            if paths:
+                process_lsb_encode_batch(paths)
+        elif idx == 2:  # Decode single
+            paths = get_input_paths_interactive(
+                "Select LSB-watermarked image", mode="single"
+            )
+            if paths:
+                process_lsb_decode_single(paths[0])
+        elif idx == 3:  # Decode batch
+            paths = get_input_paths_interactive(
+                "Select LSB-watermarked images", mode="multiple"
+            )
+            if paths:
+                process_lsb_decode_batch(paths)
+        console.clear()
+
+
+# ----------------------------------------------------------------------
 # Main menu
 # ----------------------------------------------------------------------
 
@@ -248,6 +258,7 @@ def show_main_menu() -> None:
 
     menu_actions = {
         "Visible Watermarking": show_visible_menu,
+        "LSB Watermarking": show_lsb_menu,
         "Manage configurations": manage_configurations,
         "More features (encoding models)": show_more_features_menu,
         "Exit": lambda: True,
@@ -256,7 +267,7 @@ def show_main_menu() -> None:
 
     while True:
         idx = interactive_menu(options, title="Main Menu")
-        if idx is None:  # Esc/q pressed
+        if idx is None:
             break
 
         action = menu_actions[options[idx]]
