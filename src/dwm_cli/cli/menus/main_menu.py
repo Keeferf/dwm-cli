@@ -6,7 +6,14 @@ from rich.console import Group
 from rich.text import Text
 
 from dwm_cli.cli.menus.config_menu import manage_configurations
+from dwm_cli.cli.menus.help_menu import show_help_menu  # <-- NEW IMPORT
 from dwm_cli.cli.prompts.file_prompts import get_input_paths_interactive
+from dwm_cli.cli.prompts.hybrid_prompts import (
+    process_hybrid_decode_batch,
+    process_hybrid_decode_single,
+    process_hybrid_encode_batch,
+    process_hybrid_encode_single,
+)
 from dwm_cli.cli.prompts.lsb_prompts import (
     process_lsb_decode_batch,
     process_lsb_decode_single,
@@ -188,23 +195,6 @@ def show_visible_menu() -> None:
         console.clear()
 
 
-def show_more_features_menu() -> None:
-    """Placeholder for future encoding models."""
-    options = ["Encoding models (coming soon)", "Back"]
-    while True:
-        idx = interactive_menu(options, title="More Features")
-        if idx is None or options[idx] == "Back":
-            break
-        elif idx == 0:
-            from dwm_cli.ui.console import wait_for_enter
-
-            console.print(
-                "[italic cyan]Invisible watermarking & encoding models are under development![/]"
-            )
-            wait_for_enter()
-            console.clear()
-
-
 # ----------------------------------------------------------------------
 # LSB Submenu with Batch Decode
 # ----------------------------------------------------------------------
@@ -247,6 +237,47 @@ def show_lsb_menu() -> None:
 
 
 # ----------------------------------------------------------------------
+# Hybrid Submenu (was Multi‑Domain)
+# ----------------------------------------------------------------------
+
+
+def show_hybrid_menu() -> None:
+    """Submenu for DCT-DWT-QIM watermarking: encode or decode."""
+    options = [
+        "Encode (single image)",
+        "Encode (batch multiple)",
+        "Decode (single image)",
+        "Decode (batch multiple)",
+        "Back",
+    ]
+    while True:
+        idx = interactive_menu(options, title="Hybrid Watermarking")
+        if idx is None or options[idx] == "Back":
+            break
+        elif idx == 0:  # Encode single
+            paths = get_input_paths_interactive("Select image", mode="single")
+            if paths:
+                process_hybrid_encode_single(paths[0])
+        elif idx == 1:  # Encode batch
+            paths = get_input_paths_interactive("Select images", mode="multiple")
+            if paths:
+                process_hybrid_encode_batch(paths)
+        elif idx == 2:  # Decode single
+            paths = get_input_paths_interactive(
+                "Select watermarked image", mode="single"
+            )
+            if paths:
+                process_hybrid_decode_single(paths[0])
+        elif idx == 3:  # Decode batch
+            paths = get_input_paths_interactive(
+                "Select watermarked images", mode="multiple"
+            )
+            if paths:
+                process_hybrid_decode_batch(paths)
+        console.clear()
+
+
+# ----------------------------------------------------------------------
 # Main menu
 # ----------------------------------------------------------------------
 
@@ -259,8 +290,9 @@ def show_main_menu() -> None:
     menu_actions = {
         "Visible Watermarking": show_visible_menu,
         "LSB Watermarking": show_lsb_menu,
+        "Hybrid Watermarking": show_hybrid_menu,
         "Manage configurations": manage_configurations,
-        "More features (encoding models)": show_more_features_menu,
+        "Help / Explain": show_help_menu,  # <-- NEW ENTRY (replaces "More features")
         "Exit": lambda: True,
     }
     options = list(menu_actions.keys())
