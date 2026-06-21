@@ -23,6 +23,12 @@ import cv2
 import numpy as np
 import pywt
 
+from dwm_cli.utils.image_helpers import (
+    ALLOWED_EXTENSIONS,
+    ensure_valid_image,
+    is_supported_image,
+)
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -30,12 +36,6 @@ BLOCK_SIZE: Final[int] = 8
 COEFFICIENT: Final[tuple[int, int]] = (3, 3)
 DELTA: Final[float] = 20.0
 LENGTH_HEADER_BITS: Final[int] = 32  # 32-bit unsigned int for payload length
-SUPPORTED_INPUT_EXTS: Final[frozenset[str]] = frozenset(
-    {".png", ".tiff", ".tif", ".bmp", ".webp"}
-)
-SUPPORTED_OUTPUT_EXTS: Final[frozenset[str]] = frozenset(
-    {".png", ".tiff", ".tif", ".bmp", ".webp"}
-)
 
 
 # ---------------------------------------------------------------------------
@@ -364,25 +364,8 @@ def validate_capacity(
 
 
 # ---------------------------------------------------------------------------
-# Image I/O helpers
+# Image I/O helpers (updated to use shared validation)
 # ---------------------------------------------------------------------------
-def _validate_extension(path: Path, allowed: frozenset[str]) -> None:
-    """Check that a file path has a supported extension.
-
-    Args:
-        path: Path to validate.
-        allowed: Set of lower-case extensions including the dot.
-
-    Raises:
-        ValueError: If the extension is unsupported.
-    """
-    ext = path.suffix.lower()
-    if ext not in allowed:
-        raise ValueError(
-            f"Unsupported file extension '{ext}'. Supported: {', '.join(sorted(allowed))}"
-        )
-
-
 def load_image(image_path: str) -> np.ndarray:
     """Load an image in BGR format and validate the extension.
 
@@ -396,7 +379,7 @@ def load_image(image_path: str) -> np.ndarray:
         ValueError: If the format is unsupported or loading fails.
     """
     path = Path(image_path)
-    _validate_extension(path, SUPPORTED_INPUT_EXTS)
+    ensure_valid_image(path)  # uses PIL to check extension + integrity
 
     img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if img is None:
@@ -415,9 +398,12 @@ def save_image(image_path: str, image: np.ndarray) -> None:
         ValueError: If the format is unsupported or saving fails.
     """
     path = Path(image_path)
-    _validate_extension(path, SUPPORTED_OUTPUT_EXTS)
+    if not is_supported_image(path):
+        raise ValueError(
+            f"Unsupported output extension '{path.suffix}'. "
+            f"Supported formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+        )
 
-    # Ensure directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # For WEBP, force lossless mode via imwrite params
