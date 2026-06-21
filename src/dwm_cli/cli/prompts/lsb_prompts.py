@@ -13,18 +13,29 @@ from dwm_cli.ui.console import console, wait_for_enter
 from dwm_cli.utils.image_helpers import validate_image
 
 
+# ------------------------------------------------------------
+# NEW: shared payload builder (same as hybrid_prompts)
+# ------------------------------------------------------------
+def _build_payload(owner: str, project: str, created: str) -> str:
+    """Build the canonical multi‑line payload string."""
+    return f"Owner: {owner}\nProject: {project}\nCreated: {created}"
+
+
+# ------------------------------------------------------------
+# Encode workflows
+# ------------------------------------------------------------
 def process_lsb_encode_single(input_path: Path) -> None:
     """Encode metadata into a single image via LSB."""
     console.print(Panel("[bold]LSB Steganography – Encode[/]", style="cyan"))
     owner = Prompt.ask("Owner")
     project = Prompt.ask("Project")
     created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    payload = {"owner": owner, "project": project, "created": created}
+    payload = _build_payload(owner, project, created)  # <-- now a string with newlines
 
     console.print(f"[dim]Embedding timestamp: {created}[/]")
 
     try:
-        out = encode_lsb(input_path, payload, None)
+        out = encode_lsb(input_path, payload, None)  # payload is now a string
         console.print(
             Panel(
                 f"[bold green]✓ LSB watermark embedded:[/] {out}", border_style="green"
@@ -47,7 +58,7 @@ def process_lsb_encode_batch(input_paths: List[Path]) -> None:
     owner = Prompt.ask("Owner")
     project = Prompt.ask("Project")
     created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    payload = {"owner": owner, "project": project, "created": created}
+    payload = _build_payload(owner, project, created)  # <-- now a string with newlines
 
     console.print(f"[dim]Embedding timestamp: {created} for all images[/]")
 
@@ -62,7 +73,7 @@ def process_lsb_encode_batch(input_paths: List[Path]) -> None:
         task = progress.add_task("[cyan]Encoding LSB...", total=len(valid_paths))
         for inp in valid_paths:
             try:
-                encode_lsb(inp, payload, None)
+                encode_lsb(inp, payload, None)  # payload is now a string
                 progress.update(task, advance=1, description=f"[green]✓ {inp.name}")
             except Exception as e:
                 console.print(f"[red]Error on {inp.name}: {e}[/]")
@@ -73,11 +84,15 @@ def process_lsb_encode_batch(input_paths: List[Path]) -> None:
     wait_for_enter()
 
 
+# ------------------------------------------------------------
+# Decode workflows (unchanged – they already print the payload as‑is)
+# ------------------------------------------------------------
 def process_lsb_decode_single(input_path: Path) -> None:
     """Extract LSB payload from a single image."""
     console.print(Panel("[bold]LSB Steganography – Decode[/]", style="cyan"))
     try:
         payload = decode_lsb(input_path)
+        # payload now contains newlines, and Panel will display them
         console.print(
             Panel(f"[bold green]Extracted payload:[/]\n{payload}", border_style="green")
         )
@@ -110,6 +125,7 @@ def process_lsb_decode_batch(input_paths: List[Path]) -> None:
         for inp in valid_paths:
             try:
                 payload = decode_lsb(inp)
+                # payload now contains newlines; Panel will show them
                 console.print(
                     Panel(
                         f"[bold green]{inp.name}[/] payload:\n{payload}",
