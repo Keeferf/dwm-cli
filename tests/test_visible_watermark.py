@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from PIL import Image
@@ -14,12 +13,14 @@ from dwm_cli.core.visible_watermark import (
     _TEXT_BBOX_CACHE,
     _get_cached_font,
     _get_text_bbox,
-    _resolve_position,
     add_image_watermark,
     add_text_watermark,
     add_text_watermark_batch,
     create_text_overlay,
 )
+
+# Use the shared position resolver from image_helpers
+from dwm_cli.utils.image_helpers import resolve_watermark_position
 
 
 # ---------- Fixtures ----------
@@ -87,39 +88,40 @@ def test_get_text_bbox_caching():
     assert len(_TEXT_BBOX_CACHE) == 2
 
 
-def test_resolve_position_tuple():
-    pos = _resolve_position((15, 25), (100, 100), "text", None, 20)
+def test_resolve_watermark_position_tuple():
+    pos = resolve_watermark_position((15, 25), (100, 100), 30, 20)
     assert pos == (15, 25)
 
 
-def test_resolve_position_string_xy():
-    pos = _resolve_position(" 30 , 40 ", (100, 100), "text", None, 20)
+def test_resolve_watermark_position_string_xy():
+    pos = resolve_watermark_position(" 30 , 40 ", (100, 100), 30, 20)
     assert pos == (30, 40)
 
 
-def test_resolve_position_named_presets():
-    with patch("dwm_cli.core.visible_watermark._get_text_bbox") as mock_bbox:
-        mock_bbox.return_value = (0, 0, 50, 20)  # width=50, height=20
-        width, height = 800, 600
-        margin = 10
+def test_resolve_watermark_position_named_presets():
+    width, height = 800, 600
+    wm_w, wm_h = 50, 20
+    margin = 10
 
-        pos = _resolve_position("bottom-right", (width, height), "text", None, 20)
-        assert pos == (width - 50 - margin, height - 20 - margin)
+    pos = resolve_watermark_position(
+        "bottom-right", (width, height), wm_w, wm_h, margin
+    )
+    assert pos == (width - wm_w - margin, height - wm_h - margin)
 
-        pos = _resolve_position("bottom-left", (width, height), "text", None, 20)
-        assert pos == (margin, height - 20 - margin)
+    pos = resolve_watermark_position("bottom-left", (width, height), wm_w, wm_h, margin)
+    assert pos == (margin, height - wm_h - margin)
 
-        pos = _resolve_position("top-right", (width, height), "text", None, 20)
-        assert pos == (width - 50 - margin, margin)
+    pos = resolve_watermark_position("top-right", (width, height), wm_w, wm_h, margin)
+    assert pos == (width - wm_w - margin, margin)
 
-        pos = _resolve_position("top-left", (width, height), "text", None, 20)
-        assert pos == (margin, margin)
+    pos = resolve_watermark_position("top-left", (width, height), wm_w, wm_h, margin)
+    assert pos == (margin, margin)
 
-        pos = _resolve_position("center", (width, height), "text", None, 20)
-        assert pos == ((width - 50) // 2, (height - 20) // 2)
+    pos = resolve_watermark_position("center", (width, height), wm_w, wm_h, margin)
+    assert pos == ((width - wm_w) // 2, (height - wm_h) // 2)
 
-        pos = _resolve_position("unknown", (width, height), "text", None, 20)
-        assert pos == (10, 10)
+    pos = resolve_watermark_position("unknown", (width, height), wm_w, wm_h, margin)
+    assert pos == (margin, margin)  # fallback
 
 
 # ---------- Overlay creation tests ----------
