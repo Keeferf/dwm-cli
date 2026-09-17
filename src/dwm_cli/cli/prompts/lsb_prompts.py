@@ -6,10 +6,9 @@ from typing import List
 
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
-from rich.prompt import Prompt
 
 from dwm_cli.core.lsb_watermark import NoPayloadError, decode_lsb, encode_lsb
-from dwm_cli.ui.console import console, wait_for_enter
+from dwm_cli.ui.console import ask_required, console, wait_for_enter
 from dwm_cli.utils.image_helpers import validate_image
 
 
@@ -27,10 +26,14 @@ def _build_payload(owner: str, project: str, created: str) -> str:
 def process_lsb_encode_single(input_path: Path) -> None:
     """Encode metadata into a single image via LSB."""
     console.print(Panel("[bold]LSB Steganography – Encode[/]", style="cyan"))
-    owner = Prompt.ask("Owner")
-    project = Prompt.ask("Project")
+    owner = ask_required("Owner")
+    if owner is None:
+        return
+    project = ask_required("Project")
+    if project is None:
+        return
     created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    payload = _build_payload(owner, project, created)  # <-- now a string with newlines
+    payload = _build_payload(owner, project, created)
 
     console.print(f"[dim]Embedding timestamp: {created}[/]")
 
@@ -55,10 +58,14 @@ def process_lsb_encode_batch(input_paths: List[Path]) -> None:
         return
 
     console.print(Panel("[bold]LSB Steganography – Batch Encode[/]", style="cyan"))
-    owner = Prompt.ask("Owner")
-    project = Prompt.ask("Project")
+    owner = ask_required("Owner")
+    if owner is None:
+        return
+    project = ask_required("Project")
+    if project is None:
+        return
     created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    payload = _build_payload(owner, project, created)  # <-- now a string with newlines
+    payload = _build_payload(owner, project, created)
 
     console.print(f"[dim]Embedding timestamp: {created} for all images[/]")
 

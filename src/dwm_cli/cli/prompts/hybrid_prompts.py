@@ -6,7 +6,6 @@ from typing import List
 
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
-from rich.prompt import Prompt
 
 from dwm_cli.core.hybrid_watermark import (
     calculate_capacity,
@@ -15,7 +14,7 @@ from dwm_cli.core.hybrid_watermark import (
     extract_watermark,
     validate_capacity,
 )
-from dwm_cli.ui.console import console, wait_for_enter
+from dwm_cli.ui.console import ask_required, console, wait_for_enter
 from dwm_cli.utils.image_helpers import validate_image
 
 
@@ -58,8 +57,12 @@ def process_hybrid_encode_single(input_path: Path) -> None:
     """
     console.print(Panel("[bold]Hybrid Watermarking – Encode[/]", style="magenta"))
 
-    owner = Prompt.ask("Owner")
-    project = Prompt.ask("Project")
+    owner = ask_required("Owner")
+    if owner is None:
+        return
+    project = ask_required("Project")
+    if project is None:
+        return
     created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     payload = _build_payload(owner, project, created)
 
@@ -101,8 +104,12 @@ def process_hybrid_encode_batch(input_paths: List[Path]) -> None:
 
     console.print(Panel("[bold]Hybrid Watermarking – Batch Encode[/]", style="magenta"))
 
-    owner = Prompt.ask("Owner")
-    project = Prompt.ask("Project")
+    owner = ask_required("Owner")
+    if owner is None:
+        return
+    project = ask_required("Project")
+    if project is None:
+        return
     created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     payload = _build_payload(owner, project, created)
 

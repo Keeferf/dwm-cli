@@ -17,38 +17,41 @@ def select_file_dialog(
         multiple: If True, allow multi-select (only for mode="open")
 
     Returns:
-        Path object, list of Path objects, or None if cancelled
+        Path object, list of Path objects, or None if cancelled/unavailable.
     """
     try:
         import tkinter as tk
-        from tkinter import filedialog
+    except ImportError:
+        # tkinter unavailable in this environment - prompt layer handles fallback
+        return None
 
+    from tkinter import filedialog
+
+    try:
         root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
+    except tk.TclError:
+        # No display available (headless) - fall back to manual entry upstream
+        return None
 
+    root.withdraw()
+    root.attributes("-topmost", True)
+
+    try:
         if mode == "folder":
             folder = filedialog.askdirectory(title=title)
-            root.destroy()
             return Path(folder) if folder else None
 
-        elif mode == "open":
+        if mode == "open":
             if multiple:
                 files = filedialog.askopenfilenames(title=title, filetypes=filetypes)
-                root.destroy()
                 return [Path(f) for f in files] if files else None
-            else:
-                file = filedialog.askopenfilename(title=title, filetypes=filetypes)
-                root.destroy()
-                return Path(file) if file else None
-
-        elif mode == "save":
-            file = filedialog.asksaveasfilename(title=title, filetypes=filetypes)
-            root.destroy()
+            file = filedialog.askopenfilename(title=title, filetypes=filetypes)
             return Path(file) if file else None
 
-        else:
-            raise ValueError("mode must be 'open', 'save', or 'folder'")
+        if mode == "save":
+            file = filedialog.asksaveasfilename(title=title, filetypes=filetypes)
+            return Path(file) if file else None
 
-    except (ImportError, tk.TclError):
-        return None
+        raise ValueError("mode must be 'open', 'save', or 'folder'")
+    finally:
+        root.destroy()

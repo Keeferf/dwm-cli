@@ -4,12 +4,16 @@ from typing import List, Optional, Tuple
 
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
-from rich.prompt import Prompt
 
 from dwm_cli.cli.helpers import color_to_rgb, get_output_dir
 from dwm_cli.config.settings import get_current_profile_name, load_config
 from dwm_cli.core.visible_watermark import add_image_watermark, add_text_watermark
-from dwm_cli.ui.console import console, display_info_table, wait_for_enter
+from dwm_cli.ui.console import (
+    ask_required,
+    console,
+    display_info_table,
+    wait_for_enter,
+)
 from dwm_cli.utils.image_helpers import validate_image
 
 # ------------------------------------------------------------
@@ -60,7 +64,9 @@ def process_text_watermark_single(input_path: Path) -> None:
     output_path = (
         settings.output_dir / f"{input_path.stem}_watermarked{input_path.suffix}"
     )
-    text = Prompt.ask("Watermark text")
+    text = ask_required("Watermark text")
+    if text is None:
+        return
 
     try:
         add_text_watermark(
@@ -96,7 +102,9 @@ def process_text_watermark_batch(input_paths: List[Path]) -> None:
     settings = get_watermark_settings()
     display_info_table(load_config(), settings.output_dir, get_current_profile_name())
 
-    text = Prompt.ask("Watermark text")
+    text = ask_required("Watermark text")
+    if text is None:
+        return
 
     with Progress(
         TextColumn("[progress.description]{task.description}"),
