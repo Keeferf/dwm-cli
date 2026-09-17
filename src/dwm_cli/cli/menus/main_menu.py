@@ -2,6 +2,7 @@ import sys
 import time
 from pathlib import Path
 
+from rich.align import Align
 from rich.console import Group
 from rich.text import Text
 
@@ -43,10 +44,20 @@ def animated_print(
     sys.stdout.write("\n")
 
 
+def _left_pad(text_width: int) -> str:
+    """Leading spaces needed to centre a line of the given width."""
+    return " " * max(0, (console.width - text_width) // 2)
+
+
 def build_animated_header() -> Group:
     """Animate the banner, credit line, and GitHub link."""
     banner_path = Path(__file__).parent.parent.parent / "assets" / "banner.txt"
-    banner_lines = banner_path.read_text(encoding="utf-8").splitlines()
+    try:
+        banner_lines = banner_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        banner_lines = ["Digital Watermarking CLI", "Open-Source, Cross-Platform"]
+    if not banner_lines:
+        banner_lines = ["Digital Watermarking CLI"]
     max_width = max(len(line) for line in banner_lines)
 
     top_left = "┌"
@@ -58,12 +69,16 @@ def build_animated_header() -> Group:
     purple_code = "\033[38;2;125;122;188m"
     reset_code = "\033[0m"
 
+    inner_width = max_width + 2
+    box_width = inner_width + 2
+    sys.stdout.write(_left_pad(box_width))
     sys.stdout.write(purple_code)
-    sys.stdout.write(f"{top_left}{horizontal * (max_width + 2)}{top_right}\n")
+    sys.stdout.write(f"{top_left}{horizontal * inner_width}{top_right}\n")
     sys.stdout.write(reset_code)
     sys.stdout.flush()
 
     for line in banner_lines:
+        sys.stdout.write(_left_pad(box_width))
         sys.stdout.write(purple_code)
         sys.stdout.write(f"{vertical} ")
         sys.stdout.flush()
@@ -83,22 +98,25 @@ def build_animated_header() -> Group:
         sys.stdout.write(reset_code)
         sys.stdout.flush()
 
+    sys.stdout.write(_left_pad(box_width))
     sys.stdout.write(purple_code)
-    sys.stdout.write(f"{bottom_left}{horizontal * (max_width + 2)}{bottom_right}\n")
+    sys.stdout.write(f"{bottom_left}{horizontal * inner_width}{bottom_right}\n")
     sys.stdout.write(reset_code)
     sys.stdout.flush()
 
     credit = "> Digital Watermarking CLI – Made by Keefer"
+    sys.stdout.write(_left_pad(len(credit)))
     animated_print(credit, delay=0.012, color_code="\033[96m")
 
     prefix = "> GitHub: "
+    github_url = "https://github.com/keeferf"
+    sys.stdout.write(_left_pad(len(prefix) + len(github_url)))
     sys.stdout.write("\033[96m")
     for ch in prefix:
         sys.stdout.write(ch)
         sys.stdout.flush()
         time.sleep(0.012)
     sys.stdout.write("\033[0m")
-    github_url = "https://github.com/keeferf"
     sys.stdout.write("\033[96m")
     for ch in github_url:
         sys.stdout.write(ch)
@@ -122,10 +140,17 @@ def build_animated_header() -> Group:
         style="rgb(125,122,188)",
     )
 
-    credit_text = Text(credit, style="cyan")
-    github_line = Text("> GitHub: ", style="cyan") + Text(github_url, style="cyan link")
+    credit_text = Text(credit, style="bright_cyan")
+    github_line = Text("> GitHub: ", style="bright_cyan") + Text(
+        github_url, style="bright_cyan link"
+    )
 
-    return Group(banner_text, credit_text, github_line, Text(""))
+    return Group(
+        Align.center(banner_text),
+        Align.center(credit_text),
+        Align.center(github_line),
+        Text(""),
+    )
 
 
 # ----------------------------------------------------------------------

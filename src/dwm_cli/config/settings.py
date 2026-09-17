@@ -76,6 +76,37 @@ def _set_current_profile_name(profile_name: str) -> None:
     CURRENT_PROFILE_FILE.write_text(profile_name, encoding="utf-8")
 
 
+def _coerce_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Sanitise loaded config so corrupt or wrong-typed values can't crash callers.
+
+    Numeric keys are cast with a fallback to defaults; unknown keys are kept.
+    """
+    cleaned: Dict[str, Any] = {}
+    for key, default in DEFAULT_CONFIG.items():
+        value = config.get(key, default)
+        if key in ("opacity", "scale"):
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                value = float(default)
+        elif key == "font_size":
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                value = int(default)
+        else:
+            value = str(value) if value is not None else str(default)
+        cleaned[key] = value
+
+    cleaned["opacity"] = max(0.0, min(1.0, cleaned["opacity"]))
+    if cleaned["font_size"] < 1:
+        cleaned["font_size"] = int(DEFAULT_CONFIG["font_size"])
+
+    for key, value in config.items():
+        cleaned.setdefault(key, value)
+    return cleaned
+
+
 def load_config(profile_name: Optional[str] = None) -> Dict[str, Any]:
     """Load configuration from the specified profile (or current active profile).
 
@@ -104,7 +135,7 @@ def load_config(profile_name: Optional[str] = None) -> Dict[str, Any]:
 
     config = DEFAULT_CONFIG.copy()
     config.update(user_config)
-    return config
+    return _coerce_config(config)
 
 
 def save_config(config: Dict[str, Any], profile_name: Optional[str] = None) -> None:

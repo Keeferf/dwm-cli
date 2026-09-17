@@ -79,7 +79,8 @@ def add_text_watermark(
     text_color: Tuple[int, int, int] = (255, 255, 255),
 ) -> None:
     try:
-        base: Image.Image = Image.open(input_path)
+        with Image.open(input_path) as base_fh:
+            base = base_fh.copy()
     except Exception as e:
         raise ValueError(f"Cannot open or read image {input_path}: {e}") from e
 
@@ -140,12 +141,14 @@ def add_image_watermark(
     opacity: float = 0.5,
 ) -> None:
     try:
-        base: Image.Image = Image.open(input_path)
+        with Image.open(input_path) as base_fh:
+            base = base_fh.copy()
     except Exception as e:
         raise ValueError(f"Cannot open or read image {input_path}: {e}") from e
 
     try:
-        watermark = Image.open(watermark_path).convert("RGBA")
+        with Image.open(watermark_path) as wm_fh:
+            watermark = wm_fh.convert("RGBA")
     except Exception as e:
         raise ValueError(
             f"Cannot open or read watermark image {watermark_path}: {e}"

@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from rich import box
 from rich.console import Console, RenderableType
 from rich.panel import Panel
+from rich.prompt import Prompt
 from rich.table import Table
 
 # Import the default config keys to ensure consistent column ordering
@@ -151,3 +152,18 @@ def wait_for_enter(message: str = "Press Enter to continue") -> None:
     panel = Panel(f"[dim]{message}[/]", border_style="blue", padding=(0, 1))
     console.print(panel)
     input()
+
+
+def ask_required(prompt_text: str, default: str = "") -> Optional[str]:
+    """Prompt for a non-empty string. Returns None if the user cancels/interrupts."""
+
+    def _non_empty(value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Input cannot be empty.")
+        return value
+
+    try:
+        return Prompt.ask(prompt_text, default=default, validate=_non_empty)
+    except (EOFError, KeyboardInterrupt):
+        return None
